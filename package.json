@@ -1,0 +1,20 @@
+{
+	"name": "com.lmirman.vespaio",
+	"version": "1.0.0",
+	"displayName": "VespaIO",
+	"description": "A runtime developer console that allows the user to execute commands enabling quick debugging.",
+	"hideInEditor": true,
+	"keywords": [
+	  "developer",
+	  "cheats",
+	  "console",
+	  "debugging"
+	],
+	"author": {
+	  "name": "Luke Mirman",
+	  "url": "http://lukemirman.com/"
+	},
+	"dependencies": {
+		"com.unity.textmeshpro": "3.0.6"
+	}
+}
