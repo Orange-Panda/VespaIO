@@ -26,14 +26,15 @@ https://github.com/Orange-Panda/VespaIO.git
 1. After importing the package into your Unity project create a settings asset by going to `Tools > Vespa IO > Select Console Settings`
 	1. This file defines all the options you can configure for the Vespa IO Console. If this file is not present the defaults will be used instead.
 2. In one of your scripts add the [StaticCommand] attribute to a static method and provide it with a key. This should look something like the following:
-```c#
-[StaticCommand("keyhere")]
-private static void MethodName()
-{
-	// DO SOMETHING
-}
-```
+	```c#
+	[StaticCommand("keyhere")]
+	private static void MethodName()
+	{
+		// DO SOMETHING
+	}
+	```
 3. Enter play mode and press the `~` key to open the console.
+	1. If prompted to, import the TextMeshPro essentials. The default console runner requires these assets.
 4. Enter the command key defined for the method in step 2.
 5. Your method will now be called any time your enter the command.
 6. Vespa IO comes with some built in commands, use the `help` command to see a list of all commands (built-in and user defined commands)

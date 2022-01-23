@@ -31,8 +31,15 @@ namespace LMirman.VespaIO
 	[Serializable]
 	public class ConsoleSettingsConfig
 	{
+		[Header("Commands")]
+		[Tooltip("The default state of the console enabled variable in the unity editor.")]
+		public bool defaultConsoleEnableEditor = true;
+		[Tooltip("The default state of the console enabled variable in a standalone build (i.e non-editor)")]
+		public bool defaultConsoleEnableStandalone = true;
 		[Tooltip("When should the commands be preloaded into memory? This will take some time depending on the size of your project and will only occur once per play session. Selecting none will load commands upon the first command input.")]
 		public DevConsole.PreloadType preloadType;
+
+		[Header("Console")]
 		[Tooltip("When true will automatically create an instance of the console when the game starts.")]
 		public bool instantiateConsoleOnLoad = true;
 		[Tooltip("Where is the console template stored? Must be a path inside a resources folder.")]
@@ -51,6 +58,8 @@ namespace LMirman.VespaIO
 
 		public ConsoleSettingsConfig DeepCopy() => new ConsoleSettingsConfig
 		{
+			defaultConsoleEnableEditor = defaultConsoleEnableEditor,
+			defaultConsoleEnableStandalone = defaultConsoleEnableStandalone,
 			preloadType = preloadType,
 			instantiateConsoleOnLoad = instantiateConsoleOnLoad,
 			consoleResourcePath = consoleResourcePath,

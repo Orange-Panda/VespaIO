@@ -15,6 +15,7 @@ namespace LMirman.VespaIO
 		[SerializeField] private TMP_InputField inputText;
 
 		private bool historyDirty;
+		private bool hasNoEventSystem;
 
 		internal static DevConsoleRunner Instance { get; private set; }
 
@@ -58,7 +59,7 @@ namespace LMirman.VespaIO
 			bool openKey = Input.GetKeyDown(KeyCode.Tilde) || Input.GetKeyDown(KeyCode.BackQuote);
 			bool exitKey = Input.GetKeyDown(KeyCode.Tilde) || Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.BackQuote) || Input.GetMouseButtonDown(0);
 
-			if (DevConsole.ConsoleActive && exitKey)
+			if ((DevConsole.ConsoleActive || !DevConsole.ConsoleEnabled) && exitKey)
 			{
 				SetConsoleState(false);
 			}
@@ -88,12 +89,28 @@ namespace LMirman.VespaIO
 			if (EventSystem.current != null)
 			{
 				EventSystem.current.SetSelectedGameObject(value ? inputText.gameObject : null);
-			}
 
-			if (value)
-			{
-				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
+				if (value)
+				{
+					inputText.OnPointerClick(new PointerEventData(EventSystem.current));
+				}
+
+				if (hasNoEventSystem)
+				{
+					DevConsole.Clear();
+					DevConsole.PrintWelcome();
+					hasNoEventSystem = false;
+				}
 			}
+#if UNITY_EDITOR
+			else
+			{
+				DevConsole.Clear();
+				DevConsole.Log("<color=red>ERROR:</color> No event system present in scene. The developer console cannot function without this.");
+				DevConsole.Log("Add an event system by right clicking in the scene Hierarchy > UI > Event System.");
+				hasNoEventSystem = true;
+			}
+#endif
 		}
 
 		private void OnSubmit(string submitText)

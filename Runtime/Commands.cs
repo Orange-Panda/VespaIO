@@ -127,7 +127,7 @@ namespace LMirman.VespaIO
 			ParameterInfo[] parameters = method.GetParameters();
 			for (int i = 0; i < parameters.Length; i++)
 			{
-				Guide += $"[{parameters[i].ParameterType}] ";
+				Guide += $"[{TranslateParameter(parameters[i].ParameterType)}] ";
 			}
 			Cheat = attribute.Cheat;
 			Hidden = attribute.Hidden;
@@ -152,9 +152,33 @@ namespace LMirman.VespaIO
 			ParameterInfo[] parameters = method.GetParameters();
 			for (int i = 0; i < parameters.Length; i++)
 			{
-				Guide += $"[{parameters[i].ParameterType}] ";
+				Guide += $"[{TranslateParameter(parameters[i].ParameterType)}] ";
 			}
 			Methods.Add(method);
+		}
+
+		private string TranslateParameter(Type type)
+		{
+			if (type == typeof(int))
+			{
+				return "INTEGER";
+			}
+			else if (type == typeof(float))
+			{
+				return "FLOAT";
+			}
+			else if (type == typeof(string))
+			{
+				return "WORD";
+			}
+			else if (type == typeof(Longstring))
+			{
+				return "PHRASE";
+			}
+			else
+			{
+				return "INVALID/UNKNOWN";
+			}
 		}
 	}
 }

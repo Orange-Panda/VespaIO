@@ -26,6 +26,12 @@ namespace LMirman.VespaIO
 
 		public static void ProcessCommand(string submitText)
 		{
+			if (!ConsoleEnabled)
+			{
+				Log("<color=red>Error:</color> Console is not enabled.");
+				return;
+			}
+
 			// Parse input into useful variables
 			if (!TryParseCommand(submitText, out string commandName, out object[] args, out Longstring longstring))
 			{
@@ -120,7 +126,11 @@ namespace LMirman.VespaIO
 			}
 
 			// Execute the best method found in the previous step, if one is found
-			if (bestMethod != null)
+			if (longstringMethod != null && !string.IsNullOrWhiteSpace(longstring) && (bestMethod == null || bestMethodArgCount == 0))
+			{
+				longstringMethod.Invoke(null, new object[] { longstring });
+			}
+			else if (bestMethod != null)
 			{
 				if (args.Length < bestMethodArgCount)
 				{
@@ -143,11 +153,6 @@ namespace LMirman.VespaIO
 				}
 
 				bestMethod.Invoke(null, args);
-			}
-			// If there were no matches for the parameters and a method expects a long string, invoke that one instead.
-			else if (longstringMethod != null)
-			{
-				longstringMethod.Invoke(null, new object[] { longstring });
 			}
 			// No methods support the user input parameters.
 			else
@@ -200,6 +205,12 @@ namespace LMirman.VespaIO
 		private static void CreateConsole()
 		{
 			PrintWelcome();
+
+#if UNITY_EDITOR
+			ConsoleEnabled = ConsoleSettings.Config.defaultConsoleEnableEditor;
+#else
+			ConsoleEnabled = ConsoleSettings.Config.defaultConsoleEnableStandalone;
+#endif
 
 			if (ConsoleSettings.Config.preloadType == PreloadType.RuntimeStart)
 			{
