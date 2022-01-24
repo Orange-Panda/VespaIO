@@ -33,7 +33,7 @@ namespace LMirman.VespaIO
 			}
 
 			// Parse input into useful variables
-			if (!TryParseCommand(submitText, out string commandName, out object[] args, out Longstring longstring))
+			if (!TryParseCommand(submitText, out string commandName, out object[] args, out LongString longString))
 			{
 				Log("<color=red>Error:</color> Bad command syntax");
 				return;
@@ -88,7 +88,7 @@ namespace LMirman.VespaIO
 
 			// Get the best method from the arguments
 			// The best method is the one with all parameters of the same type and the most parameters matched
-			MethodInfo longstringMethod = null;
+			MethodInfo longStringMethod = null;
 			MethodInfo bestMethod = null;
 			int bestMethodArgCount = -1;
 			for (int i = 0; i < validMethods.Count; i++)
@@ -119,16 +119,16 @@ namespace LMirman.VespaIO
 					bestMethodArgCount = parameters.Length;
 				}
 
-				if (parameters.Length == 1 && parameters[0].ParameterType == typeof(Longstring))
+				if (parameters.Length == 1 && parameters[0].ParameterType == typeof(LongString))
 				{
-					longstringMethod = method;
+					longStringMethod = method;
 				}
 			}
 
 			// Execute the best method found in the previous step, if one is found
-			if (longstringMethod != null && !string.IsNullOrWhiteSpace(longstring) && (bestMethod == null || bestMethodArgCount == 0))
+			if (longStringMethod != null && !string.IsNullOrWhiteSpace(longString) && (bestMethod == null || bestMethodArgCount == 0))
 			{
-				longstringMethod.Invoke(null, new object[] { longstring });
+				longStringMethod.Invoke(null, new object[] { longString });
 			}
 			else if (bestMethod != null)
 			{
@@ -169,10 +169,10 @@ namespace LMirman.VespaIO
 		/// <param name="input">The user input to parse</param>
 		/// <param name="commandName">The name of the command that the user has input</param>
 		/// <param name="args">None to many long array of the arguments provided by the user.</param>
-		/// <param name="longstring">All parameters provided by the user in a single spaced string.</param>
+		/// <param name="longString">All parameters provided by the user in a single spaced string.</param>
 		/// <remarks>All output variables will be null if the parsing failed.</remarks>
 		/// <returns>True if the input was parsed properly, false if the parsing failed.</returns>
-		private static bool TryParseCommand(string input, out string commandName, out object[] args, out Longstring longstring)
+		private static bool TryParseCommand(string input, out string commandName, out object[] args, out LongString longString)
 		{
 			try
 			{
@@ -187,14 +187,14 @@ namespace LMirman.VespaIO
 					}
 				}
 				args = foundArgs.ToArray();
-				longstring = foundArgs.Count > 0 ? (Longstring)input.Remove(0, commandName.Length + 1) : (Longstring)string.Empty;
+				longString = foundArgs.Count > 0 ? (LongString)input.Remove(0, commandName.Length + 1) : (LongString)string.Empty;
 				return true;
 			}
 			catch
 			{
 				args = null;
 				commandName = null;
-				longstring = null;
+				longString = null;
 				return false;
 			}
 		}

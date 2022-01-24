@@ -171,7 +171,7 @@ namespace LMirman.VespaIO
 			{
 				return "WORD";
 			}
-			else if (type == typeof(Longstring))
+			else if (type == typeof(LongString))
 			{
 				return "PHRASE";
 			}

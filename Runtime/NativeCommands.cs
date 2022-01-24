@@ -39,14 +39,14 @@ namespace LMirman.VespaIO
 		}
 
 		[StaticCommand("scene", Cheat = true)]
-		public static void Scene(Longstring target)
+		public static void Scene(LongString target)
 		{
 			DevConsole.Log($"Attempting to load scene: {target}");
 			SceneManager.LoadScene(target);
 		}
 
 		[StaticCommand("echo", Name = "Echo", Description = "Repeat the input back to the console.")]
-		public static void Echo(Longstring message)
+		public static void Echo(LongString message)
 		{
 			DevConsole.Log(message);
 		}
@@ -89,7 +89,7 @@ namespace LMirman.VespaIO
 		}
 
 		[StaticCommand("help")]
-		public static void Help(Longstring query)
+		public static void Help(LongString query)
 		{
 			string value = ((string)query).ToLower();
 			if (Commands.Lookup.TryGetValue(value, out Command command))
