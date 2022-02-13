@@ -46,6 +46,14 @@ namespace LMirman.VespaIO
 				return;
 			}
 
+#if UNITY_EDITOR
+			// Automatically enable cheats if configured to do so in the config, making quick debugging more convenient when enabled.
+			if (command.Cheat && !CheatsEnabled && ConsoleSettings.Config.editorAutoEnableCheats)
+			{
+				CheatsEnabled = true;
+			}
+#endif
+
 			// Test the command found that it can be executed if it is a cheat
 			if (command.Cheat && !CheatsEnabled)
 			{

@@ -36,6 +36,8 @@ namespace LMirman.VespaIO
 		public bool defaultConsoleEnableEditor = true;
 		[Tooltip("The default state of the console enabled variable in a standalone build (i.e non-editor)")]
 		public bool defaultConsoleEnableStandalone = true;
+		[Tooltip("If a cheat command is used in the editor should cheats automatically be enabled?")]
+		public bool editorAutoEnableCheats = false;
 		[Tooltip("When should the commands be preloaded into memory? This will take some time depending on the size of your project and will only occur once per play session. Selecting none will load commands upon the first command input.")]
 		public DevConsole.PreloadType preloadType;
 
@@ -60,6 +62,7 @@ namespace LMirman.VespaIO
 		{
 			defaultConsoleEnableEditor = defaultConsoleEnableEditor,
 			defaultConsoleEnableStandalone = defaultConsoleEnableStandalone,
+			editorAutoEnableCheats = editorAutoEnableCheats,
 			preloadType = preloadType,
 			instantiateConsoleOnLoad = instantiateConsoleOnLoad,
 			consoleResourcePath = consoleResourcePath,
