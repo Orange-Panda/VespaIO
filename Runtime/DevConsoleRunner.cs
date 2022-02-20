@@ -11,11 +11,13 @@ namespace LMirman.VespaIO
 	{
 		[Header("Component References")]
 		[SerializeField] private Canvas canvas;
+		[SerializeField] private GameObject container;
 		[SerializeField] private TextMeshProUGUI history;
 		[SerializeField] private TMP_InputField inputText;
 
 		private bool historyDirty;
 		private bool hasNoEventSystem;
+		private GameObject previousSelectable;
 
 		internal static DevConsoleRunner Instance { get; private set; }
 
@@ -83,18 +85,28 @@ namespace LMirman.VespaIO
 		public void SetConsoleState(bool value)
 		{
 			DevConsole.ConsoleActive = value;
+			if (container)
+			{
+				container.SetActive(value);
+			}
 			canvas.enabled = value;
 			inputText.enabled = value;
 			inputText.SetTextWithoutNotify(string.Empty);
 			if (EventSystem.current != null)
 			{
-				EventSystem.current.SetSelectedGameObject(value ? inputText.gameObject : null);
-
 				if (value)
 				{
+					previousSelectable = EventSystem.current.currentSelectedGameObject;
+					EventSystem.current.SetSelectedGameObject(inputText.gameObject);
 					inputText.OnPointerClick(new PointerEventData(EventSystem.current));
 				}
+				else if (previousSelectable != null && previousSelectable.activeInHierarchy)
+				{
+					EventSystem.current.SetSelectedGameObject(previousSelectable);
+					previousSelectable = null;
+				}
 
+				// Clear no event system warning if present since one is present now.
 				if (hasNoEventSystem)
 				{
 					DevConsole.Clear();

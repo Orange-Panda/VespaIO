@@ -50,6 +50,7 @@ namespace LMirman.VespaIO
 			// Automatically enable cheats if configured to do so in the config, making quick debugging more convenient when enabled.
 			if (command.Cheat && !CheatsEnabled && ConsoleSettings.Config.editorAutoEnableCheats)
 			{
+				Log("<color=yellow>Cheats have automatically been enabled.</color>");
 				CheatsEnabled = true;
 			}
 #endif
