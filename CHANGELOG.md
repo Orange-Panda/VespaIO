@@ -3,6 +3,18 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2022-03-29
+
+### Added
+- New preference to scale console canvas
+- New preference to change keycodes for open/close console.
+- Up/Down Arrow Navigation through recent commands
+- Autofill prediction for command name 
+	- Pressing `Tab` will input the predicted command
+
+### Changed
+- Some fields were renamed which may require external scripts to be updated.
+
 ## [1.0.4] - 2022-02-20
 
 ### Fixed
