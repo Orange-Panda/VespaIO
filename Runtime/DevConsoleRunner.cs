@@ -23,8 +23,10 @@ namespace LMirman.VespaIO
 		private int recentCommandIndex = -1;
 		private HistoryInput historyInput;
 		private float historyInputTime = 0;
+		private string lastInput;
 
 		internal static DevConsoleRunner Instance { get; private set; }
+		internal static List<string> recentFillSearch = new List<string>();
 
 		private void OnEnable()
 		{
@@ -47,6 +49,8 @@ namespace LMirman.VespaIO
 		private void InputText_OnValueChanged(string value)
 		{
 			recentCommandIndex = -1;
+			recentFillSearch.Clear();
+			lastInput = value;
 		}
 
 		private void Start()
@@ -82,6 +86,23 @@ namespace LMirman.VespaIO
 			bool exitKey = GetKeysDown(config.closeConsoleKeycodes) || (config.closeConsoleOnLeftClick && Input.GetMouseButtonDown(0));
 
 			UpdateTraverseCommandHistory();
+
+			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab) && !string.IsNullOrWhiteSpace(lastInput))
+			{
+				// This clears the recent fill list in case the user has tab through all options
+				if (Commands.FindFirstMatch(lastInput, recentFillSearch) == null)
+				{
+					recentFillSearch.Clear();
+				}
+
+				string foundCommand = Commands.FindFirstMatch(lastInput, recentFillSearch);
+				if (foundCommand != null)
+				{
+					recentFillSearch.Add(foundCommand);
+					inputText.SetTextWithoutNotify(foundCommand);
+					inputText.caretPosition = inputText.text.Length;
+				}
+			}
 
 			if ((DevConsole.ConsoleActive || !DevConsole.ConsoleEnabled) && exitKey)
 			{

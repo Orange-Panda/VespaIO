@@ -104,6 +104,24 @@ namespace LMirman.VespaIO
 			}
 #endif
 		}
+
+		/// <summary>
+		/// Find the first command that starts with the <paramref name="searchText"/>.
+		/// </summary>
+		/// <param name="searchText">The text to search with.</param>
+		/// <returns>The first command that starts with the search text or null if none is found.</returns>
+		internal static string FindFirstMatch(string searchText, List<string> excludeList)
+		{
+			foreach (string key in Lookup.Keys)
+			{
+				if (key.StartsWith(searchText) && !excludeList.Contains(key))
+				{
+					return key;
+				}
+			}
+
+			return null;
+		}
 	}
 
 	public class Command
