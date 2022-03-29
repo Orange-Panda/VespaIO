@@ -47,6 +47,10 @@ namespace LMirman.VespaIO
 		[Tooltip("Where is the console template stored? Must be a path inside a resources folder.")]
 		public string consoleResourcePath = "VespaIO/Console";
 
+		[Header("History")]
+		[Range(1, 256)]
+		public int commandHistoryCapacity = 32;
+
 		[Header("Input")]
 		public KeyCode[] openConsoleKeycodes = new KeyCode[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10 };
 		public KeyCode[] closeConsoleKeycodes = new KeyCode[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10, KeyCode.Escape };
@@ -71,6 +75,7 @@ namespace LMirman.VespaIO
 			preloadType = preloadType,
 			instantiateConsoleOnLoad = instantiateConsoleOnLoad,
 			consoleResourcePath = consoleResourcePath,
+			commandHistoryCapacity = commandHistoryCapacity,
 			openConsoleKeycodes = openConsoleKeycodes,
 			closeConsoleKeycodes = closeConsoleKeycodes,
 			closeConsoleOnLeftClick = closeConsoleOnLeftClick,

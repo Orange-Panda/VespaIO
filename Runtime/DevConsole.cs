@@ -8,7 +8,13 @@ namespace LMirman.VespaIO
 {
 	public static class DevConsole
 	{
+		/// <summary>
+		/// Whether the console is currently enabled and open.
+		/// </summary>
 		public static bool ConsoleActive { get; internal set; }
+		/// <summary>
+		/// Whether the console is allowed to be opened or utilized.
+		/// </summary>
 		public static bool ConsoleEnabled { get; set; }
 
 		/// <summary>
@@ -17,15 +23,28 @@ namespace LMirman.VespaIO
 		/// <remarks>By default cheats can not be disabled at any point during an active session. Therefore to prevent players exploting the cheat commands you can check for cheats enabled to prevent saving game data to disk, granting achievements, sending telemetry data, etc.</remarks>
 		public static bool CheatsEnabled { get; internal set; }
 
-		internal static StringBuilder history = new StringBuilder();
+		internal static StringBuilder output = new StringBuilder();
 
 		/// <summary>
-		/// Invoked when something is logged into the console history or if it is cleared.
+		/// Invoked when something is logged into the console output or if it is cleared.
 		/// </summary>
-		internal static event Action HistoryUpdate = delegate { };
+		internal static event Action OutputUpdate = delegate { };
+		internal static LinkedList<string> recentCommands = new LinkedList<string>();
 
 		public static void ProcessCommand(string submitText)
 		{
+			// Add the command to history if it was not the most recent command sent.
+			if ((recentCommands.Count <= 0 || !recentCommands.First.Value.Equals(submitText)) && !string.IsNullOrWhiteSpace(submitText))
+			{
+				recentCommands.AddFirst(submitText);
+			}
+
+			// Restrict list to certain capacity
+			while (recentCommands.Count > 0 && recentCommands.Count > ConsoleSettings.Config.commandHistoryCapacity)
+			{
+				recentCommands.RemoveLast();
+			}
+
 			if (!ConsoleEnabled)
 			{
 				Log("<color=red>Error:</color> Console is not enabled.");
@@ -241,12 +260,12 @@ namespace LMirman.VespaIO
 		}
 
 		/// <summary>
-		/// Clear the history of the console.
+		/// Clear the output of the console.
 		/// </summary>
 		public static void Clear()
 		{
-			history.Clear();
-			HistoryUpdate.Invoke();
+			output.Clear();
+			OutputUpdate.Invoke();
 		}
 
 		/// <summary>
@@ -258,10 +277,10 @@ namespace LMirman.VespaIO
 		{
 			if (startWithNewLine)
 			{
-				history.AppendLine();
+				output.AppendLine();
 			}
-			history.Append(message);
-			HistoryUpdate.Invoke();
+			output.Append(message);
+			OutputUpdate.Invoke();
 		}
 
 		public static void LogCommandHelp(Command command)

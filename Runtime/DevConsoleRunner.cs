@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -19,22 +20,33 @@ namespace LMirman.VespaIO
 		private bool historyDirty;
 		private bool hasNoEventSystem;
 		private GameObject previousSelectable;
+		private int recentCommandIndex = -1;
+		private HistoryInput historyInput;
+		private float historyInputTime = 0;
 
 		internal static DevConsoleRunner Instance { get; private set; }
 
 		private void OnEnable()
 		{
-			DevConsole.HistoryUpdate += DeveloperConsole_HistoryUpdate;
+			DevConsole.OutputUpdate += DeveloperConsole_HistoryUpdate;
+			recentCommandIndex = -1;
+			inputText.onValueChanged.AddListener(InputText_OnValueChanged);
 		}
 
 		private void OnDisable()
 		{
-			DevConsole.HistoryUpdate -= DeveloperConsole_HistoryUpdate;
+			DevConsole.OutputUpdate -= DeveloperConsole_HistoryUpdate;
+			inputText.onValueChanged.RemoveListener(InputText_OnValueChanged);
 		}
 
 		private void DeveloperConsole_HistoryUpdate()
 		{
 			historyDirty = true;
+		}
+
+		private void InputText_OnValueChanged(string value)
+		{
+			recentCommandIndex = -1;
 		}
 
 		private void Start()
@@ -66,8 +78,10 @@ namespace LMirman.VespaIO
 		private void Update()
 		{
 			ConsoleSettingsConfig config = ConsoleSettings.Config;
-			bool openKey = DidInput(config.openConsoleKeycodes);
-			bool exitKey = DidInput(config.closeConsoleKeycodes) || (config.closeConsoleOnLeftClick && Input.GetMouseButtonDown(0));
+			bool openKey = GetKeysDown(config.openConsoleKeycodes);
+			bool exitKey = GetKeysDown(config.closeConsoleKeycodes) || (config.closeConsoleOnLeftClick && Input.GetMouseButtonDown(0));
+
+			UpdateTraverseCommandHistory();
 
 			if ((DevConsole.ConsoleActive || !DevConsole.ConsoleEnabled) && exitKey)
 			{
@@ -85,12 +99,75 @@ namespace LMirman.VespaIO
 
 			if (historyDirty)
 			{
-				history.text = DevConsole.history.ToString();
+				history.text = DevConsole.output.ToString();
 				historyDirty = false;
 			}
 		}
 
-		private bool DidInput(KeyCode[] keyCodes)
+		private void UpdateTraverseCommandHistory()
+		{
+			// Traverse command history on up/down arrow key down.
+			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.UpArrow))
+			{
+				SetRecentCommandInput(1);
+				historyInput = HistoryInput.Up;
+				historyInputTime = 0;
+			}
+			else if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.DownArrow))
+			{
+				SetRecentCommandInput(-1);
+				historyInput = HistoryInput.Down;
+				historyInputTime = 0;
+			}
+
+			// Held key scroll
+			if (historyInput == HistoryInput.Up)
+			{
+				Scroll(1, KeyCode.UpArrow);
+			}
+			else if (historyInput == HistoryInput.Down)
+			{
+				Scroll(-1, KeyCode.DownArrow);
+			}
+
+			void Scroll(int direction, KeyCode stopKeyCode)
+			{
+				historyInputTime += Time.deltaTime;
+				if (historyInputTime > 0.5f)
+				{
+					SetRecentCommandInput(direction);
+					historyInputTime -= 0.15f;
+				}
+
+				if (Input.GetKeyUp(stopKeyCode) || recentCommandIndex == -1 || recentCommandIndex == DevConsole.recentCommands.Count - 1)
+				{
+					historyInput = HistoryInput.None;
+					historyInputTime = 0;
+				}
+			}
+		}
+
+		private void SetRecentCommandInput(int direction)
+		{
+			recentCommandIndex = Mathf.Clamp(recentCommandIndex + direction, -1, DevConsole.recentCommands.Count - 1);
+			if (recentCommandIndex == -1 || DevConsole.recentCommands.Count <= 0)
+			{
+				inputText.SetTextWithoutNotify(string.Empty);
+			}
+			else
+			{
+				LinkedListNode<string> current = DevConsole.recentCommands.First;
+				for (int i = 0; i < recentCommandIndex; i++)
+				{
+					current = current.Next;
+				}
+				inputText.SetTextWithoutNotify(current.Value);
+			}
+
+			inputText.caretPosition = inputText.text.Length;
+		}
+
+		private bool GetKeysDown(KeyCode[] keyCodes)
 		{
 			for (int i = 0; i < keyCodes.Length; i++)
 			{
@@ -112,6 +189,7 @@ namespace LMirman.VespaIO
 			canvas.enabled = value;
 			inputText.enabled = value;
 			inputText.SetTextWithoutNotify(string.Empty);
+			recentCommandIndex = -1;
 			if (EventSystem.current != null)
 			{
 				if (value)
@@ -154,7 +232,13 @@ namespace LMirman.VespaIO
 				DevConsole.ProcessCommand(submitText);
 				EventSystem.current.SetSelectedGameObject(inputText.gameObject);
 				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
+				recentCommandIndex = -1;
 			}
+		}
+
+		private enum HistoryInput
+		{
+			None, Up, Down
 		}
 	}
 }
