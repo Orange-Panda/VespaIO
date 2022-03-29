@@ -47,6 +47,11 @@ namespace LMirman.VespaIO
 		[Tooltip("Where is the console template stored? Must be a path inside a resources folder.")]
 		public string consoleResourcePath = "VespaIO/Console";
 
+		[Header("Input")]
+		public KeyCode[] openConsoleKeycodes = new KeyCode[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10 };
+		public KeyCode[] closeConsoleKeycodes = new KeyCode[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10, KeyCode.Escape };
+		public bool closeConsoleOnLeftClick = true;
+
 		[Header("Welcome")]
 		[Tooltip("When true the welcome message will include the application version, unity version, and other common metadata about the game instance.")]
 		public bool printMetadataOnWelcome = true;
@@ -66,6 +71,9 @@ namespace LMirman.VespaIO
 			preloadType = preloadType,
 			instantiateConsoleOnLoad = instantiateConsoleOnLoad,
 			consoleResourcePath = consoleResourcePath,
+			openConsoleKeycodes = openConsoleKeycodes,
+			closeConsoleKeycodes = closeConsoleKeycodes,
+			closeConsoleOnLeftClick = closeConsoleOnLeftClick,
 			printMetadataOnWelcome = printMetadataOnWelcome,
 			welcomeText = welcomeText,
 			warnForNonstaticMethods = warnForNonstaticMethods

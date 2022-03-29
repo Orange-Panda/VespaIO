@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace LMirman.VespaIO
 {
@@ -49,6 +50,12 @@ namespace LMirman.VespaIO
 				Commands.PreloadLookup();
 			}
 
+			// Destroy the graphic raycaster if the console is never expected to utilize it
+			if (ConsoleSettings.Config.closeConsoleOnLeftClick && TryGetComponent(out GraphicRaycaster raycaster))
+			{
+				Destroy(raycaster);
+			}
+
 			Instance = this;
 			DontDestroyOnLoad(this);
 			SetConsoleState(false);
@@ -58,8 +65,9 @@ namespace LMirman.VespaIO
 
 		private void Update()
 		{
-			bool openKey = Input.GetKeyDown(KeyCode.Tilde) || Input.GetKeyDown(KeyCode.BackQuote);
-			bool exitKey = Input.GetKeyDown(KeyCode.Tilde) || Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.BackQuote) || Input.GetMouseButtonDown(0);
+			ConsoleSettingsConfig config = ConsoleSettings.Config;
+			bool openKey = DidInput(config.openConsoleKeycodes);
+			bool exitKey = DidInput(config.closeConsoleKeycodes) || (config.closeConsoleOnLeftClick && Input.GetMouseButtonDown(0));
 
 			if ((DevConsole.ConsoleActive || !DevConsole.ConsoleEnabled) && exitKey)
 			{
@@ -69,7 +77,7 @@ namespace LMirman.VespaIO
 			{
 				SetConsoleState(true);
 
-				if (ConsoleSettings.Config.preloadType == DevConsole.PreloadType.ConsoleOpen)
+				if (config.preloadType == DevConsole.PreloadType.ConsoleOpen)
 				{
 					Commands.PreloadLookup();
 				}
@@ -80,6 +88,18 @@ namespace LMirman.VespaIO
 				history.text = DevConsole.history.ToString();
 				historyDirty = false;
 			}
+		}
+
+		private bool DidInput(KeyCode[] keyCodes)
+		{
+			for (int i = 0; i < keyCodes.Length; i++)
+			{
+				if (Input.GetKeyDown(keyCodes[i]))
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 
 		public void SetConsoleState(bool value)

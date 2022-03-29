@@ -755,6 +755,7 @@ GameObject:
   - component: {fileID: 3209357465723313624}
   - component: {fileID: 3209357465723313625}
   - component: {fileID: 3209357465723313627}
+  - component: {fileID: 3253455866285288823}
   m_Layer: 0
   m_Name: Console
   m_TagString: Untagged
@@ -842,6 +843,23 @@ MonoBehaviour:
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
   m_PresetInfoIsWorld: 0
+--- !u!114 &3253455866285288823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3209357465723313626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreReversedGraphics: 1
+  m_BlockingObjects: 0
+  m_BlockingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!1 &6534017713887459745
 GameObject:
   m_ObjectHideFlags: 0
