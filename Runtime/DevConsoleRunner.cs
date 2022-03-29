@@ -13,9 +13,11 @@ namespace LMirman.VespaIO
 	{
 		[Header("Component References")]
 		[SerializeField] private Canvas canvas;
+		[SerializeField] private CanvasScaler canvasScaler;
 		[SerializeField] private GameObject container;
 		[SerializeField] private TextMeshProUGUI history;
 		[SerializeField] private TMP_InputField inputText;
+		[SerializeField] private TMP_Text autofillPreview;
 
 		private bool historyDirty;
 		private bool hasNoEventSystem;
@@ -24,6 +26,7 @@ namespace LMirman.VespaIO
 		private HistoryInput historyInput;
 		private float historyInputTime = 0;
 		private string lastInput;
+		private string lastAutofillPreview;
 
 		internal static DevConsoleRunner Instance { get; private set; }
 		internal static List<string> recentFillSearch = new List<string>();
@@ -33,6 +36,7 @@ namespace LMirman.VespaIO
 			DevConsole.OutputUpdate += DeveloperConsole_HistoryUpdate;
 			recentCommandIndex = -1;
 			inputText.onValueChanged.AddListener(InputText_OnValueChanged);
+			canvasScaler.scaleFactor = ConsoleSettings.Config.consoleScale;
 		}
 
 		private void OnDisable()
@@ -86,23 +90,8 @@ namespace LMirman.VespaIO
 			bool exitKey = GetKeysDown(config.closeConsoleKeycodes) || (config.closeConsoleOnLeftClick && Input.GetMouseButtonDown(0));
 
 			UpdateTraverseCommandHistory();
-
-			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab) && !string.IsNullOrWhiteSpace(lastInput))
-			{
-				// This clears the recent fill list in case the user has tab through all options
-				if (Commands.FindFirstMatch(lastInput, recentFillSearch) == null)
-				{
-					recentFillSearch.Clear();
-				}
-
-				string foundCommand = Commands.FindFirstMatch(lastInput, recentFillSearch);
-				if (foundCommand != null)
-				{
-					recentFillSearch.Add(foundCommand);
-					inputText.SetTextWithoutNotify(foundCommand);
-					inputText.caretPosition = inputText.text.Length;
-				}
-			}
+			UpdateAutofillPreview();
+			UpdateAutofillInput();
 
 			if ((DevConsole.ConsoleActive || !DevConsole.ConsoleEnabled) && exitKey)
 			{
@@ -122,6 +111,57 @@ namespace LMirman.VespaIO
 			{
 				history.text = DevConsole.output.ToString();
 				historyDirty = false;
+			}
+		}
+
+		private void UpdateAutofillPreview()
+		{
+			if (inputText.text != lastAutofillPreview)
+			{
+				string foundCommand = Commands.FindFirstMatch(inputText.text, recentFillSearch);
+				if (string.IsNullOrWhiteSpace(inputText.text))
+				{
+					autofillPreview.text = "help";
+					autofillPreview.enabled = true;
+				}
+				else if (foundCommand != null)
+				{
+					autofillPreview.text = foundCommand;
+					autofillPreview.enabled = true;
+				}
+				else
+				{
+					autofillPreview.enabled = false;
+					autofillPreview.text = string.Empty;
+				}
+				lastAutofillPreview = inputText.text;
+			}
+		}
+
+		private void UpdateAutofillInput()
+		{
+			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab))
+			{
+				if (string.IsNullOrWhiteSpace(lastInput))
+				{
+					inputText.SetTextWithoutNotify("help");
+					inputText.caretPosition = inputText.text.Length;
+					return;
+				}
+
+				// This clears the recent fill list in case the user has tab through all options
+				if (Commands.FindFirstMatch(lastInput, recentFillSearch) == null)
+				{
+					recentFillSearch.Clear();
+				}
+
+				string foundCommand = Commands.FindFirstMatch(lastInput, recentFillSearch);
+				if (foundCommand != null)
+				{
+					recentFillSearch.Add(foundCommand);
+					inputText.SetTextWithoutNotify(foundCommand);
+					inputText.caretPosition = inputText.text.Length;
+				}
 			}
 		}
 

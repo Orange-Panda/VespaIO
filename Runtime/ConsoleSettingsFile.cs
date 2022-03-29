@@ -46,6 +46,8 @@ namespace LMirman.VespaIO
 		public bool instantiateConsoleOnLoad = true;
 		[Tooltip("Where is the console template stored? Must be a path inside a resources folder.")]
 		public string consoleResourcePath = "VespaIO/Console";
+		[Range(0.1f, 4f)]
+		public float consoleScale = 1f;
 
 		[Header("History")]
 		[Range(1, 256)]
@@ -75,6 +77,7 @@ namespace LMirman.VespaIO
 			preloadType = preloadType,
 			instantiateConsoleOnLoad = instantiateConsoleOnLoad,
 			consoleResourcePath = consoleResourcePath,
+			consoleScale = consoleScale,
 			commandHistoryCapacity = commandHistoryCapacity,
 			openConsoleKeycodes = openConsoleKeycodes,
 			closeConsoleKeycodes = closeConsoleKeycodes,
