@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using UnityEngine;
 
 namespace LMirman.VespaIO
 {
@@ -110,13 +111,14 @@ namespace LMirman.VespaIO
 		/// </summary>
 		/// <param name="searchText">The text to search with.</param>
 		/// <returns>The first command that starts with the search text or null if none is found.</returns>
-		internal static string FindFirstMatch(string searchText, List<string> excludeList)
+		internal static Command FindFirstMatch(string searchText, List<string> excludeList)
 		{
-			foreach (string key in Lookup.Keys)
+			foreach (KeyValuePair<string, Command> pair in Lookup)
 			{
-				if (key.StartsWith(searchText) && !excludeList.Contains(key))
+				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.CheatsEnabled && !(Application.isEditor && ConsoleSettings.Config.editorAutoEnableCheats));
+				if (pair.Key.StartsWith(searchText) && !excludeList.Contains(pair.Key) && !hidden)
 				{
-					return key;
+					return pair.Value;
 				}
 			}
 

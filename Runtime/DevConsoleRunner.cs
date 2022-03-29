@@ -116,52 +116,56 @@ namespace LMirman.VespaIO
 
 		private void UpdateAutofillPreview()
 		{
-			if (inputText.text != lastAutofillPreview)
+			if (inputText.text == lastAutofillPreview)
 			{
-				string foundCommand = Commands.FindFirstMatch(inputText.text, recentFillSearch);
-				if (string.IsNullOrWhiteSpace(inputText.text))
-				{
-					autofillPreview.text = "help";
-					autofillPreview.enabled = true;
-				}
-				else if (foundCommand != null)
-				{
-					autofillPreview.text = foundCommand;
-					autofillPreview.enabled = true;
-				}
-				else
-				{
-					autofillPreview.enabled = false;
-					autofillPreview.text = string.Empty;
-				}
-				lastAutofillPreview = inputText.text;
+				return;
 			}
+
+			Command foundCommand = Commands.FindFirstMatch(inputText.text, recentFillSearch);
+			if (string.IsNullOrWhiteSpace(inputText.text))
+			{
+				autofillPreview.text = "help";
+				autofillPreview.enabled = true;
+			}
+			else if (foundCommand != null)
+			{
+				autofillPreview.text = foundCommand.Key;
+				autofillPreview.enabled = true;
+			}
+			else
+			{
+				autofillPreview.enabled = false;
+				autofillPreview.text = string.Empty;
+			}
+			lastAutofillPreview = inputText.text;
 		}
 
 		private void UpdateAutofillInput()
 		{
-			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab))
+			if (!DevConsole.ConsoleActive || !Input.GetKeyDown(KeyCode.Tab))
 			{
-				if (string.IsNullOrWhiteSpace(lastInput))
-				{
-					inputText.SetTextWithoutNotify("help");
-					inputText.caretPosition = inputText.text.Length;
-					return;
-				}
+				return;
+			}
 
-				// This clears the recent fill list in case the user has tab through all options
-				if (Commands.FindFirstMatch(lastInput, recentFillSearch) == null)
-				{
-					recentFillSearch.Clear();
-				}
+			if (string.IsNullOrWhiteSpace(lastInput))
+			{
+				inputText.SetTextWithoutNotify("help ");
+				inputText.caretPosition = inputText.text.Length;
+				return;
+			}
 
-				string foundCommand = Commands.FindFirstMatch(lastInput, recentFillSearch);
-				if (foundCommand != null)
-				{
-					recentFillSearch.Add(foundCommand);
-					inputText.SetTextWithoutNotify(foundCommand);
-					inputText.caretPosition = inputText.text.Length;
-				}
+			// This clears the recent fill list in case the user has tab through all options
+			if (Commands.FindFirstMatch(lastInput, recentFillSearch) == null)
+			{
+				recentFillSearch.Clear();
+			}
+
+			Command foundCommand = Commands.FindFirstMatch(lastInput, recentFillSearch);
+			if (foundCommand != null)
+			{
+				recentFillSearch.Add(foundCommand.Key);
+				inputText.SetTextWithoutNotify(foundCommand.Key + ' ');
+				inputText.caretPosition = inputText.text.Length;
 			}
 		}
 
