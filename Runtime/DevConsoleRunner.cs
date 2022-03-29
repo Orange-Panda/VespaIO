@@ -298,6 +298,8 @@ namespace LMirman.VespaIO
 				EventSystem.current.SetSelectedGameObject(inputText.gameObject);
 				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
 				recentCommandIndex = -1;
+				lastInput = string.Empty;
+				recentFillSearch.Clear();
 			}
 		}
 
