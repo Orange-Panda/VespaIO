@@ -197,7 +197,7 @@ namespace LMirman.VespaIO
 
 			void Scroll(int direction, KeyCode stopKeyCode)
 			{
-				historyInputTime += Time.deltaTime;
+				historyInputTime += Time.unscaledDeltaTime;
 				if (historyInputTime > 0.5f)
 				{
 					SetRecentCommandInput(direction);
