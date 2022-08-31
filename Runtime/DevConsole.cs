@@ -20,10 +20,10 @@ namespace LMirman.VespaIO
 		/// <summary>
 		/// True when the user has enabled cheats, false if they have not yet.
 		/// </summary>
-		/// <remarks>By default cheats can not be disabled at any point during an active session. Therefore to prevent players exploting the cheat commands you can check for cheats enabled to prevent saving game data to disk, granting achievements, sending telemetry data, etc.</remarks>
+		/// <remarks>By default cheats can not be disabled at any point during an active session. Therefore to prevent players exploiting the cheat commands you can check for cheats enabled to prevent saving game data to disk, granting achievements, sending telemetry data, etc.</remarks>
 		public static bool CheatsEnabled { get; internal set; }
 
-		internal static StringBuilder output = new StringBuilder();
+		internal static readonly StringBuilder output = new StringBuilder();
 
 		/// <summary>
 		/// Invoked when something is logged into the console output or if it is cleared.
@@ -128,9 +128,9 @@ namespace LMirman.VespaIO
 				{
 					if (parameters[j].ParameterType != args[j].GetType())
 					{
-						if (parameters[j].ParameterType == typeof(float) && args[j].GetType() == typeof(int))
+						if (parameters[j].ParameterType == typeof(float) && args[j] is int)
 						{
-							// Since an int argument can be implictly converted to a float we do so here to ensure a method looking for it can use it.
+							// Since an int argument can be implicitly converted to a float we do so here to ensure a method looking for it can use it.
 							int intObject = (int)args[j];
 							args[j] = (float)intObject;
 						}
@@ -187,7 +187,6 @@ namespace LMirman.VespaIO
 			{
 				Log("<color=red>Error:</color> Invalid arguments provided for command");
 				LogCommandHelp(command);
-				return;
 			}
 		}
 

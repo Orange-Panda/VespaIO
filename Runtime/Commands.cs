@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace LMirman.VespaIO
 {
-	internal class Commands
+	internal static class Commands
 	{
 		internal static Dictionary<string, Command> Lookup { get; private set; }
 
@@ -28,15 +28,15 @@ namespace LMirman.VespaIO
 		/// <summary>
 		/// Build the <see cref="Lookup"/> Dictionary for the <see cref="DevConsole"/>.
 		/// </summary>
-		/// <remarks>This is VERY expensive on the garbage collector. Need a more efficent way to do this if possible. Fortunately this is only done once so even if this is the only way it can be done its not too bad.</remarks>
+		/// <remarks>This is VERY expensive on the garbage collector. Need a more efficient way to do this if possible. Fortunately this is only done once so even if this is the only way it can be done its not too bad.</remarks>
 		private static void BuildLookupTable()
 		{
 			Lookup = new Dictionary<string, Command>();
-			var classes = AppDomain.CurrentDomain.GetAssemblies()
+			List<Type> classes = AppDomain.CurrentDomain.GetAssemblies()
 				.SelectMany(x => x.GetTypes())
-				.Where(x => x.IsClass);
+				.Where(x => x.IsClass).ToList();
 
-			var staticMethods = classes.SelectMany(x => x.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly))
+			IEnumerable<MethodInfo> staticMethods = classes.SelectMany(x => x.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly))
 				.Where(x => x.GetCustomAttribute(typeof(StaticCommandAttribute), false) != null);
 
 			List<KeyValuePair<StaticCommandAttribute, MethodInfo>> priorityCommands = new List<KeyValuePair<StaticCommandAttribute, MethodInfo>>();
@@ -90,7 +90,7 @@ namespace LMirman.VespaIO
 #if UNITY_EDITOR // Only done in editor since the end user should not care about this message and not checking this dramatically improves performance.
 			if (ConsoleSettings.Config.warnForNonstaticMethods)
 			{
-				var instancedMethods = classes.SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly))
+				IEnumerable<MethodInfo> instancedMethods = classes.SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly))
 					.Where(x => x.GetCustomAttribute(typeof(StaticCommandAttribute), false) != null);
 
 				foreach (MethodInfo method in instancedMethods)
@@ -110,9 +110,11 @@ namespace LMirman.VespaIO
 		/// Find the first command that starts with the <paramref name="searchText"/>.
 		/// </summary>
 		/// <param name="searchText">The text to search with.</param>
+		/// <param name="excludeList">Commands that are exempt, usually because they have already been filled in the console.</param>
 		/// <returns>The first command that starts with the search text or null if none is found.</returns>
 		internal static Command FindFirstMatch(string searchText, List<string> excludeList)
 		{
+			searchText = searchText.ToLower();
 			foreach (KeyValuePair<string, Command> pair in Lookup)
 			{
 				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.CheatsEnabled && !(Application.isEditor && ConsoleSettings.Config.editorAutoEnableCheats));
