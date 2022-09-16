@@ -31,8 +31,14 @@ namespace LMirman.VespaIO
 		internal static event Action OutputUpdate = delegate { };
 		internal static LinkedList<string> recentCommands = new LinkedList<string>();
 
-		public static void ProcessCommand(string submitText)
+		public static void ProcessInput(string submitText)
 		{
+			if (submitText == null)
+			{
+				Log("<color=red>Error:</color> Input command was null.");
+				return;
+			}
+			
 			// Add the command to history if it was not the most recent command sent.
 			if ((recentCommands.Count <= 0 || !recentCommands.First.Value.Equals(submitText)) && !string.IsNullOrWhiteSpace(submitText))
 			{
@@ -51,8 +57,53 @@ namespace LMirman.VespaIO
 				return;
 			}
 
+			if (submitText.Contains(";"))
+			{
+				List<string> commands = new List<string>();
+				bool hasEscaped = false;
+				int substringStart = 0;
+				int length = 0;
+				for (int i = 0; i < submitText.Length; i++)
+				{
+					if (submitText[i] == ';' && !hasEscaped)
+					{
+						if (length == 0)
+						{
+							substringStart = i + 1;
+							continue;
+						}
+						
+						commands.Add(submitText.Substring(substringStart, length));
+						substringStart = i + 1;
+						length = 0;
+						continue;
+					}
+					hasEscaped = submitText[i] == '\\';
+					length++;
+				}
+
+				if (length > 0)
+				{
+					commands.Add(submitText.Substring(substringStart, length));
+				}
+
+				foreach (string command in commands)
+				{
+					ProcessCommand(command.Replace("\\;", ";"));
+				}
+			}
+			else
+			{
+				ProcessCommand(submitText);
+			}
+		}
+
+		private static void ProcessCommand(string commandText)
+		{
+			commandText = commandText.TrimStart(' ');
+			
 			// Parse input into useful variables
-			if (!TryParseCommand(submitText, out string commandName, out object[] args, out LongString longString))
+			if (!TryParseCommand(commandText, out string commandName, out object[] args, out LongString longString))
 			{
 				Log("<color=red>Error:</color> Bad command syntax");
 				return;
@@ -110,6 +161,7 @@ namespace LMirman.VespaIO
 				{
 					Log("<color=red>Error:</color> Not enough arguments provided for command");
 				}
+
 				LogCommandHelp(command);
 				return;
 			}
@@ -168,6 +220,7 @@ namespace LMirman.VespaIO
 					{
 						newArgs[i] = i < args.Length ? args[i] : parameters[i].DefaultValue;
 					}
+
 					args = newArgs;
 				}
 				else if (args.Length > bestMethodArgCount)
@@ -177,6 +230,7 @@ namespace LMirman.VespaIO
 					{
 						newArgs[i] = args[i];
 					}
+
 					args = newArgs;
 				}
 

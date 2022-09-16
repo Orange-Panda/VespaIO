@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -86,8 +87,9 @@ namespace LMirman.VespaIO
 		private void Update()
 		{
 			ConsoleSettingsConfig config = ConsoleSettings.Config;
-			bool openKey = GetKeysDown(config.openConsoleKeycodes);
-			bool exitKey = GetKeysDown(config.closeConsoleKeycodes) || (config.closeConsoleOnLeftClick && Input.GetMouseButtonDown(0));
+			bool shouldInput = DetermineShouldInput(config);
+			bool openKey = shouldInput && GetKeysDown(config.openConsoleKeycodes);
+			bool exitKey = shouldInput && DetermineShouldExit(config);
 
 			UpdateTraverseCommandHistory();
 			UpdateAutofillPreview();
@@ -111,6 +113,31 @@ namespace LMirman.VespaIO
 			{
 				history.text = DevConsole.output.ToString();
 				historyDirty = false;
+			}
+		}
+
+		private bool DetermineShouldInput(ConsoleSettingsConfig config)
+		{
+			return !config.requireHeldKeyToToggle || GetKeysHeld(config.inputWhileHeldKeycodes);
+		}
+
+		private bool DetermineShouldExit(ConsoleSettingsConfig config)
+		{
+			if (GetKeysDown(config.closeAnyConsoleKeycodes))
+			{
+				return true;
+			}
+			else if (GetKeysDown(config.closeEmptyConsoleKeycodes) && inputText.text.Length <= 1)
+			{
+				return true;
+			}
+			else if (Input.GetMouseButtonDown(0) && config.closeConsoleOnLeftClick)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
 			}
 		}
 
@@ -232,6 +259,18 @@ namespace LMirman.VespaIO
 			inputText.caretPosition = inputText.text.Length;
 		}
 
+		private bool GetKeysHeld(KeyCode[] keyCodes)
+		{
+			for (int i = 0; i < keyCodes.Length; i++)
+			{
+				if (Input.GetKey(keyCodes[i]))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		
 		private bool GetKeysDown(KeyCode[] keyCodes)
 		{
 			for (int i = 0; i < keyCodes.Length; i++)
@@ -294,7 +333,7 @@ namespace LMirman.VespaIO
 			{
 				inputText.SetTextWithoutNotify(string.Empty);
 				DevConsole.Log("> " + submitText);
-				DevConsole.ProcessCommand(submitText);
+				DevConsole.ProcessInput(submitText);
 				EventSystem.current.SetSelectedGameObject(inputText.gameObject);
 				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
 				recentCommandIndex = -1;

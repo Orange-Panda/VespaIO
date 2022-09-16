@@ -54,8 +54,16 @@ namespace LMirman.VespaIO
 		public int commandHistoryCapacity = 32;
 
 		[Header("Input")]
-		public KeyCode[] openConsoleKeycodes = new KeyCode[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10 };
-		public KeyCode[] closeConsoleKeycodes = new KeyCode[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10, KeyCode.Escape };
+		[Tooltip("When true will require a key to be held to open/close the console.")]
+		public bool requireHeldKeyToToggle;
+		[Tooltip("When 'requireHeldKeyForInput' is enabled: require one of these keys to be held to open/close the console.")]
+		public KeyCode[] inputWhileHeldKeycodes = new [] { KeyCode.LeftControl, KeyCode.RightControl, KeyCode.LeftCommand, KeyCode.RightCommand };
+		[Space]
+		public KeyCode[] openConsoleKeycodes = new [] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10 };
+		[Tooltip("Close the console when these are pressed only if the console is empty.")]
+		public KeyCode[] closeEmptyConsoleKeycodes = new[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash };
+		[Tooltip("Close the console when these are pressed, regardless of if there is a pending input.")]
+		public KeyCode[] closeAnyConsoleKeycodes = new [] { KeyCode.F10, KeyCode.Escape };
 		public bool closeConsoleOnLeftClick = true;
 
 		[Header("Welcome")]
@@ -80,7 +88,10 @@ namespace LMirman.VespaIO
 			consoleScale = consoleScale,
 			commandHistoryCapacity = commandHistoryCapacity,
 			openConsoleKeycodes = openConsoleKeycodes,
-			closeConsoleKeycodes = closeConsoleKeycodes,
+			closeAnyConsoleKeycodes = closeAnyConsoleKeycodes,
+			inputWhileHeldKeycodes = inputWhileHeldKeycodes,
+			requireHeldKeyToToggle = requireHeldKeyToToggle,
+			closeEmptyConsoleKeycodes = closeEmptyConsoleKeycodes,
 			closeConsoleOnLeftClick = closeConsoleOnLeftClick,
 			printMetadataOnWelcome = printMetadataOnWelcome,
 			welcomeText = welcomeText,
