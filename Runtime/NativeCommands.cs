@@ -71,7 +71,7 @@ namespace LMirman.VespaIO
 					"- The game may become unstable with the use of cheat commands.\n" +
 					"- Some features like saving and achievements may be disabled.\n\n</color>" +
 					"It is highly recommended you don't enable cheats unless you are comfortable with the unstable experience.\n" +
-					"If you are still sure you would like to enable cheat commands please enter the follwing command <b>exactly</b> as follows: cheats enable");
+					"If you are still sure you would like to enable cheat commands please enter the following command <b>exactly</b> as follows: cheats enable");
 			}
 		}
 
@@ -188,7 +188,7 @@ namespace LMirman.VespaIO
 
 		private static bool IsCommandHidden(Command command)
 		{
-			return command.Hidden || command.Cheat && !DevConsole.CheatsEnabled;
+			return command.Hidden || (command.Cheat && !DevConsole.CheatsEnabled);
 		}
 		#endregion
 	}

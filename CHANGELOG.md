@@ -6,8 +6,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ## [Unreleased]
 
 ### Added
-- Semicolons in the input field will now begin a new command, which can be prevented with the `\;` input which will later be interpreted as `;`.
 - Added `requireHeldKeyToToggle` and `inputWhileHeldKeycodes` settings which when enabled require a key to be held to open/close the console. This is not enabled by default.
+- Semicolons in the input field will now begin a new command, which can be prevented with the `\;` input which will later be interpreted as `;`.
+- The quotation mark character in the input field will now be used to prevent space argument separation and semicolon command separation.
+	- This gives support to WORD having spaces without the implementation of LongString
+	- This behavior can be ignored by escaping the character with `\"` which will later be interpreted as `"`.
+	- Unescaped Quotes are removed from the final word.
+		- Except for Longstring which does not sanitize the input.
 
 ### Changed
 - Breaking: Split the formerly `closeConsoleKeycodes` setting into two separate settings: `closeAnyConsoleKeycodes` which will close the console regardless of input size and `closeEmptyConsoleKeycodes` which will only close the console when it is empty. This is to allow the input of the `, \, and ~ characters except for at the very start of input.

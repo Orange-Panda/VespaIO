@@ -10,6 +10,7 @@ namespace LMirman.VespaIO
 
 		public static implicit operator string(LongString longString) => longString.value;
 		public static implicit operator LongString(string value) => new LongString(value);
+		public static readonly LongString Empty = (LongString)string.Empty;
 
 		public LongString(string value)
 		{

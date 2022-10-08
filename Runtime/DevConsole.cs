@@ -57,55 +57,73 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			if (submitText.Contains(";"))
-			{
-				List<string> commands = new List<string>();
-				bool hasEscaped = false;
-				int substringStart = 0;
-				int length = 0;
-				for (int i = 0; i < submitText.Length; i++)
-				{
-					if (submitText[i] == ';' && !hasEscaped)
-					{
-						if (length == 0)
-						{
-							substringStart = i + 1;
-							continue;
-						}
-						
-						commands.Add(submitText.Substring(substringStart, length));
-						substringStart = i + 1;
-						length = 0;
-						continue;
-					}
-					hasEscaped = submitText[i] == '\\';
-					length++;
-				}
+			SplitInput(submitText);
+		}
 
-				if (length > 0)
-				{
-					commands.Add(submitText.Substring(substringStart, length));
-				}
-
-				foreach (string command in commands)
-				{
-					ProcessCommand(command.Replace("\\;", ";"));
-				}
-			}
-			else
+		private static void SplitInput(string submitText)
+		{
+			// If the command doesn't even have a semicolon we can immediately submit it
+			if (!submitText.Contains(";"))
 			{
 				ProcessCommand(submitText);
+				return;
+			}
+
+			List<string> inputs = new List<string>();
+			bool inQuote = false;
+			int escapeCount = 0;
+			int substringStart = 0;
+			int substringLength = 0;
+			for (int i = 0; i < submitText.Length; i++)
+			{
+				// Group quotes into a single command.
+				if (submitText[i] == '\"' && escapeCount % 2 == 0)
+				{
+					inQuote = !inQuote;
+				}
+				
+				// If we encounter an unescaped semicolon, begin a new command.
+				if (submitText[i] == ';' && escapeCount % 2 == 0 && !inQuote)
+				{
+					// This split has no content. Skip it.
+					if (substringLength == 0)
+					{
+						substringStart = i + 1;
+						continue;
+					}
+
+					inputs.Add(submitText.Substring(substringStart, substringLength));
+					substringStart = i + 1;
+					substringLength = 0;
+					continue;
+				}
+
+				escapeCount = submitText[i] == '\\' ? escapeCount + 1 : 0;
+				substringLength++;
+			}
+
+			// Add the last command input
+			if (substringLength > 0)
+			{
+				inputs.Add(submitText.Substring(substringStart, substringLength));
+			}
+
+			// Process each split input
+			foreach (string command in inputs)
+			{
+				ProcessCommand(command.Replace("\\;", ";"));
 			}
 		}
 
 		private static void ProcessCommand(string commandText)
 		{
+			// Remove leading space
 			commandText = commandText.TrimStart(' ');
 			
 			// Parse input into useful variables
 			if (!TryParseCommand(commandText, out string commandName, out object[] args, out LongString longString))
 			{
-				Log("<color=red>Error:</color> Bad command syntax");
+				Log("<color=red>Error:</color> Invalid command syntax");
 				return;
 			}
 
@@ -257,10 +275,10 @@ namespace LMirman.VespaIO
 		{
 			try
 			{
-				string[] splitInput = input.Split(' ');
+				List<string> splitInput = SplitIntoArgs(input);
 				commandName = splitInput[0].ToLower();
 				List<object> foundArgs = new List<object>();
-				for (int i = 1; i < splitInput.Length; i++)
+				for (int i = 1; i < splitInput.Count; i++)
 				{
 					if (!string.IsNullOrWhiteSpace(splitInput[i]))
 					{
@@ -268,7 +286,7 @@ namespace LMirman.VespaIO
 					}
 				}
 				args = foundArgs.ToArray();
-				longString = foundArgs.Count > 0 ? (LongString)input.Remove(0, commandName.Length + 1) : (LongString)string.Empty;
+				longString = foundArgs.Count > 0 ? (LongString)input.Remove(0, commandName.Length + 1) : LongString.Empty;
 				return true;
 			}
 			catch
@@ -277,6 +295,73 @@ namespace LMirman.VespaIO
 				commandName = null;
 				longString = null;
 				return false;
+			}
+		}
+
+		private static List<string> SplitIntoArgs(string input)
+		{
+			List<string> splitInput = new List<string>();
+			bool inQuote = false;
+			bool hasEscapedQuote = false;
+			int escapeCount = 0;
+			int substringStart = 0;
+			int substringLength = 0;
+			for (int i = 0; i < input.Length; i++)
+			{
+				// If we encounter an unescaped quote mark, toggle quote mode.
+				if (input[i] == '"' && escapeCount % 2 == 0)
+				{
+					inQuote = !inQuote;
+				}
+				else if (input[i] == '"' && escapeCount % 2 == 1)
+				{
+					hasEscapedQuote = true;
+				}
+
+				// If we encounter a space and are not in quote mode, begin a new split.
+				if (input[i] == ' ' && !inQuote)
+				{
+					splitInput.Add(GetSubstring());
+					substringStart = i + 1;
+					substringLength = 0;
+					hasEscapedQuote = false;
+					continue;
+				}
+
+				escapeCount = input[i] == '\\' ? escapeCount + 1 : 0;
+				substringLength++;
+			}
+
+			// Add the last command input
+			if (substringLength > 0)
+			{
+				splitInput.Add(GetSubstring());
+			}
+
+			return splitInput;
+
+			string GetSubstring()
+			{
+				string value = input.Substring(substringStart, substringLength);
+				if (!value.Contains("\"")) // There were no quote characters so we don't have to remove them.
+				{
+					return value.Replace("\\\\", "\\");
+				}
+				if (!hasEscapedQuote) // There we no unescaped quotes so we can easily just remove them all without checking for escape characters
+				{
+					return value.Replace("\"", string.Empty).Replace("\\\\", "\\");
+				}
+				else // The worst case scenario: There are some escaped quotes that we have to manually parse.
+				{
+					for (int i = 0; i < value.Length - 1; i++) // Shift goal by -1 because we need to look at the next character
+					{
+						if (value[i] == '\\' && (value[i + 1] == '\\' || value[i + 1] == '\"'))
+						{
+							value = value.Remove(i, 1);
+						}
+					}
+					return value;
+				}
 			}
 		}
 
