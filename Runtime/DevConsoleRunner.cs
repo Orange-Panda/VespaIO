@@ -111,7 +111,7 @@ namespace LMirman.VespaIO
 
 			if (historyDirty)
 			{
-				history.text = DevConsole.output.ToString();
+				history.text = DevConsole.Output.ToString();
 				historyDirty = false;
 			}
 		}
@@ -231,7 +231,7 @@ namespace LMirman.VespaIO
 					historyInputTime -= 0.15f;
 				}
 
-				if (Input.GetKeyUp(stopKeyCode) || recentCommandIndex == -1 || recentCommandIndex == DevConsole.recentCommands.Count - 1)
+				if (Input.GetKeyUp(stopKeyCode) || recentCommandIndex == -1 || recentCommandIndex == DevConsole.RecentCommands.Count - 1)
 				{
 					historyInput = HistoryInput.None;
 					historyInputTime = 0;
@@ -241,14 +241,14 @@ namespace LMirman.VespaIO
 
 		private void SetRecentCommandInput(int direction)
 		{
-			recentCommandIndex = Mathf.Clamp(recentCommandIndex + direction, -1, DevConsole.recentCommands.Count - 1);
-			if (recentCommandIndex == -1 || DevConsole.recentCommands.Count <= 0)
+			recentCommandIndex = Mathf.Clamp(recentCommandIndex + direction, -1, DevConsole.RecentCommands.Count - 1);
+			if (recentCommandIndex == -1 || DevConsole.RecentCommands.Count <= 0)
 			{
 				inputText.SetTextWithoutNotify(string.Empty);
 			}
 			else
 			{
-				LinkedListNode<string> current = DevConsole.recentCommands.First;
+				LinkedListNode<string> current = DevConsole.RecentCommands.First;
 				for (int i = 0; i < recentCommandIndex; i++)
 				{
 					current = current.Next;

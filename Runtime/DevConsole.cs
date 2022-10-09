@@ -23,13 +23,13 @@ namespace LMirman.VespaIO
 		/// <remarks>By default cheats can not be disabled at any point during an active session. Therefore to prevent players exploiting the cheat commands you can check for cheats enabled to prevent saving game data to disk, granting achievements, sending telemetry data, etc.</remarks>
 		public static bool CheatsEnabled { get; internal set; }
 
-		internal static readonly StringBuilder output = new StringBuilder();
+		internal static readonly StringBuilder Output = new StringBuilder();
 
 		/// <summary>
 		/// Invoked when something is logged into the console output or if it is cleared.
 		/// </summary>
 		internal static event Action OutputUpdate = delegate { };
-		internal static LinkedList<string> recentCommands = new LinkedList<string>();
+		internal static readonly LinkedList<string> RecentCommands = new LinkedList<string>();
 
 		public static void ProcessInput(string submitText)
 		{
@@ -40,15 +40,15 @@ namespace LMirman.VespaIO
 			}
 			
 			// Add the command to history if it was not the most recent command sent.
-			if ((recentCommands.Count <= 0 || !recentCommands.First.Value.Equals(submitText)) && !string.IsNullOrWhiteSpace(submitText))
+			if ((RecentCommands.Count <= 0 || !RecentCommands.First.Value.Equals(submitText)) && !string.IsNullOrWhiteSpace(submitText))
 			{
-				recentCommands.AddFirst(submitText);
+				RecentCommands.AddFirst(submitText);
 			}
 
 			// Restrict list to certain capacity
-			while (recentCommands.Count > 0 && recentCommands.Count > ConsoleSettings.Config.commandHistoryCapacity)
+			while (RecentCommands.Count > 0 && RecentCommands.Count > ConsoleSettings.Config.commandHistoryCapacity)
 			{
-				recentCommands.RemoveLast();
+				RecentCommands.RemoveLast();
 			}
 
 			if (!ConsoleEnabled)
@@ -275,6 +275,8 @@ namespace LMirman.VespaIO
 		{
 			try
 			{
+				// Preprocess for alias command
+				input = ReplaceAlias(input);
 				List<string> splitInput = SplitIntoArgs(input);
 				commandName = splitInput[0].ToLower();
 				List<object> foundArgs = new List<object>();
@@ -296,6 +298,46 @@ namespace LMirman.VespaIO
 				longString = null;
 				return false;
 			}
+		}
+
+		private static string ReplaceAlias(string input)
+		{
+			input = input.TrimStart(' ');
+			bool inQuote = false;
+			int escapeCount = 0;
+			int substringLength = 0;
+			for (int i = 0; i < input.Length; i++)
+			{
+				if (input[i] == ' ' && !inQuote)
+				{
+					break;
+				}
+				
+				// If we encounter an unescaped quote mark, toggle quote mode.
+				if (input[i] == '"' && escapeCount % 2 == 0)
+				{
+					inQuote = !inQuote;
+				}
+
+				escapeCount = input[i] == '\\' ? escapeCount + 1 : 0;
+				substringLength++;
+			}
+
+			string substring = input.Substring(0, substringLength).ToLower();
+			if (substring.Length > 0 && Aliases.Lookup.TryGetValue(substring, out string aliasValue))
+			{
+				if (Commands.Lookup.ContainsKey(substring))
+				{
+					Log($"<color=orange>Alert:</color> There is an alias defined at \"{substring}\" but there is already a command with the same name. The command is given priority so you are encouraged to remove your alias.");
+				}
+				else
+				{
+					string newValue = aliasValue + input.Substring(substringLength);
+					Log($"<color=yellow>></color> {newValue}");
+					return newValue;
+				}
+			}
+			return input;
 		}
 
 		private static List<string> SplitIntoArgs(string input)
@@ -321,7 +363,10 @@ namespace LMirman.VespaIO
 				// If we encounter a space and are not in quote mode, begin a new split.
 				if (input[i] == ' ' && !inQuote)
 				{
-					splitInput.Add(GetSubstring());
+					if (substringLength > 0)
+					{
+						splitInput.Add(GetSubstring());
+					}
 					substringStart = i + 1;
 					substringLength = 0;
 					hasEscapedQuote = false;
@@ -402,7 +447,7 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public static void Clear()
 		{
-			output.Clear();
+			Output.Clear();
 			OutputUpdate.Invoke();
 		}
 
@@ -415,9 +460,9 @@ namespace LMirman.VespaIO
 		{
 			if (startWithNewLine)
 			{
-				output.AppendLine();
+				Output.AppendLine();
 			}
-			output.Append(message);
+			Output.Append(message);
 			OutputUpdate.Invoke();
 		}
 

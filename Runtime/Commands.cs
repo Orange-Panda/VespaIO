@@ -179,7 +179,7 @@ namespace LMirman.VespaIO
 			Methods.Add(method);
 		}
 
-		private string TranslateParameter(Type type)
+		private static string TranslateParameter(Type type)
 		{
 			if (type == typeof(int))
 			{
