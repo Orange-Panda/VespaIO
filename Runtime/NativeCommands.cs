@@ -281,15 +281,15 @@ namespace LMirman.VespaIO
 		}
 
 		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
-		public static void ListAlias(string filter)
+		public static void ListAlias(LongString filter)
 		{
-			string lowFilter = filter.ToLower();
+			string lowFilter = filter.value.ToLower();
 			DevConsole.Log($"--- Aliases Containing \"{filter}\" ---");
 			foreach (KeyValuePair<string, string> alias in Aliases.Lookup)
 			{
 				if (alias.Key.Contains(lowFilter) || alias.Value.ToLower().Contains(lowFilter))
 				{
-					DevConsole.Log($"\"{alias.Key}\" -> \"{alias.Value}\"");
+					DevConsole.Log($"'{alias.Key}'  ->  '{alias.Value}'");
 				}
 			}
 		}
@@ -302,7 +302,7 @@ namespace LMirman.VespaIO
 			pageNum = Mathf.Clamp(pageNum, 1, pageCount);
 			int remaining = AliasPageLength;
 			int ignore = (pageNum - 1) * AliasPageLength;
-			DevConsole.Log($"========== Help: Page {pageNum}/{pageCount} ==========");
+			DevConsole.Log($"--- Aliases {pageNum}/{pageCount} ---");
 			foreach (KeyValuePair<string, string> alias in Aliases.Lookup)
 			{
 				//Stop if we have print out enough commands
@@ -317,12 +317,12 @@ namespace LMirman.VespaIO
 				}
 				else
 				{
-					DevConsole.Log($"\"{alias.Key}\" -> \"{alias.Value}\"");
+					DevConsole.Log($"'{alias.Key}'  ->  '{alias.Value}'");
 					remaining--;
 				}
 			}
-			DevConsole.Log($"========== END OF PAGE {pageNum}/{pageCount} ==========");
-			DevConsole.Log("========== Use \"help {page #}\" for more ==========");
+			DevConsole.Log($"--- END OF PAGE {pageNum}/{pageCount} ---");
+			DevConsole.Log("--- Use \"alias_list {page #}\" for more ---");
 		}
 		#endregion
 	}

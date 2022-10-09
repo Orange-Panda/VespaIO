@@ -189,26 +189,35 @@ namespace LMirman.VespaIO
 			// The best method is the one with all parameters of the same type and the most parameters matched
 			MethodInfo longStringMethod = null;
 			MethodInfo bestMethod = null;
+			int bestMethodValue = 0;
 			int bestMethodArgCount = -1;
 			foreach (MethodInfo method in validMethods)
 			{
 				bool canCastAll = true;
+				int value = 0;
 				ParameterInfo[] parameters = method.GetParameters();
 				
 				// Go through all parameters to make sure there is a valid type for each one.
 				for (int i = 0; i < parameters.Length && i < args.Length; i++)
 				{
-					if (!args[i].HasValidType(parameters[i].ParameterType))
+					Type parameterType = parameters[i].ParameterType;
+					if (parameterType != typeof(LongString) && parameterType != typeof(string))
+					{
+						value++;
+					}
+					
+					if (!args[i].HasValidType(parameterType))
 					{
 						canCastAll = false;
 						break;
 					}
 				}
 
-				if (canCastAll && parameters.Length > bestMethodArgCount)
+				if (canCastAll && (parameters.Length > bestMethodArgCount || (parameters.Length >= bestMethodArgCount && value >= bestMethodValue)))
 				{
 					bestMethod = method;
 					bestMethodArgCount = parameters.Length;
+					bestMethodValue = value;
 				}
 
 				if (parameters.Length == 1 && parameters[0].ParameterType == typeof(LongString))

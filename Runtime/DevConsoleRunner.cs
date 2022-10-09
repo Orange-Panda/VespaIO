@@ -148,7 +148,7 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			Command foundCommand = Commands.FindFirstMatch(inputText.text, recentFillSearch);
+			string foundCommand = FindNextFill(inputText.text, recentFillSearch);
 			if (string.IsNullOrWhiteSpace(inputText.text))
 			{
 				autofillPreview.text = "help";
@@ -156,7 +156,7 @@ namespace LMirman.VespaIO
 			}
 			else if (foundCommand != null)
 			{
-				autofillPreview.text = foundCommand.Key;
+				autofillPreview.text = foundCommand;
 				autofillPreview.enabled = true;
 			}
 			else
@@ -182,18 +182,47 @@ namespace LMirman.VespaIO
 			}
 
 			// This clears the recent fill list in case the user has tab through all options
-			if (Commands.FindFirstMatch(lastInput, recentFillSearch) == null)
+			if (FindNextFill(lastInput, recentFillSearch) == null)
 			{
 				recentFillSearch.Clear();
 			}
 
-			Command foundCommand = Commands.FindFirstMatch(lastInput, recentFillSearch);
-			if (foundCommand != null)
+			string foundFill = FindNextFill(lastInput, recentFillSearch);
+			if (foundFill != null)
 			{
-				recentFillSearch.Add(foundCommand.Key);
-				inputText.SetTextWithoutNotify(foundCommand.Key + ' ');
+				recentFillSearch.Add(foundFill);
+				inputText.SetTextWithoutNotify(foundFill + ' ');
 				inputText.caretPosition = inputText.text.Length;
 			}
+		}
+
+		/// <summary>
+		/// Find the first alias or command that starts with the <paramref name="searchString"/>.
+		/// </summary>
+		/// <param name="searchString">The text to search with.</param>
+		/// <param name="excludeList">Fills that are exempt, usually because they have already been filled in the console.</param>
+		/// <returns>The first alias then command that starts with the search text or null if none is found.</returns>
+		private static string FindNextFill(string searchString, List<string> excludeList)
+		{
+			searchString = searchString.ToLower();
+			foreach (KeyValuePair<string, string> pair in Aliases.Lookup)
+			{
+				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key))
+				{
+					return pair.Key;
+				}
+			}
+			
+			foreach (KeyValuePair<string, Command> pair in Commands.Lookup)
+			{
+				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.CheatsEnabled && !(Application.isEditor && ConsoleSettings.Config.editorAutoEnableCheats));
+				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key) && !hidden)
+				{
+					return pair.Value.Key;
+				}
+			}
+
+			return null;
 		}
 
 		private void UpdateTraverseCommandHistory()
