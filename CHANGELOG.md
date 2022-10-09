@@ -3,11 +3,12 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2022-10-09
 
 ### Added
 - Added `requireHeldKeyToToggle` and `inputWhileHeldKeycodes` settings which when enabled require a key to be held to open/close the console. This is not enabled by default.
 - Semicolons in the input field will now begin a new command, which can be prevented with the `\;` input which will later be interpreted as `;`.
+- Added the `Alias` system which allows definitions of command shortcuts at runtime.
 - The quotation mark character in the input field will now be used to prevent space argument separation and semicolon command separation.
 	- This gives support to WORD having spaces without the implementation of LongString
 	- This behavior can be ignored by escaping the character with `\"` which will later be interpreted as `"`.
@@ -16,6 +17,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ### Changed
 - Breaking: Split the formerly `closeConsoleKeycodes` setting into two separate settings: `closeAnyConsoleKeycodes` which will close the console regardless of input size and `closeEmptyConsoleKeycodes` which will only close the console when it is empty. This is to allow the input of the `, \, and ~ characters except for at the very start of input.
+- Backend for parameter interpretation has been improved.
+	- This adds support for bool static command parameters
+- For multiple method definitions for the same command: Non-string commands are given priority over string commands.
+- Autofill will choose aliases from the new alias system and then autofill commands.
 
 ### Fixed
 - Fixed Tab key autocompletion not functioning correctly with capital letters.
