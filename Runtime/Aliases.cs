@@ -7,12 +7,13 @@ namespace LMirman.VespaIO
 {
 	internal static class Aliases
 	{
-		internal static Dictionary<string, string> Lookup = new Dictionary<string, string>();
 		private const string DirectoryName = "VespaIO";
 		private const string PrefsLocation = "aliases.json";
 
 		private static string DataPath => $"{Application.persistentDataPath}/{DirectoryName}/{PrefsLocation}";
 		private static string DirectoryPath => $"{Application.persistentDataPath}/{DirectoryName}";
+		
+		internal static Dictionary<string, string> Lookup { get; private set; } = new Dictionary<string, string>();
 
 		static Aliases()
 		{
@@ -32,7 +33,6 @@ namespace LMirman.VespaIO
 			{
 				string fileData = File.ReadAllText(DataPath);
 				Lookup = JsonConvert.DeserializeObject<Dictionary<string, string>>(fileData);
-				//TODO: Sanitize loaded list.
 			}
 			catch
 			{

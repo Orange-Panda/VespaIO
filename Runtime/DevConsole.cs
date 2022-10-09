@@ -57,6 +57,7 @@ namespace LMirman.VespaIO
 				return;
 			}
 
+			submitText = ReplaceAlias(submitText);
 			SplitInput(submitText);
 		}
 
@@ -121,7 +122,7 @@ namespace LMirman.VespaIO
 			commandText = commandText.TrimStart(' ');
 			
 			// Parse input into useful variables
-			if (!TryParseCommand(commandText, out string commandName, out object[] args, out LongString longString))
+			if (!TryParseCommand(commandText, out string commandName, out Argument[] args, out LongString longString))
 			{
 				Log("<color=red>Error:</color> Invalid command syntax");
 				return;
@@ -189,25 +190,18 @@ namespace LMirman.VespaIO
 			MethodInfo longStringMethod = null;
 			MethodInfo bestMethod = null;
 			int bestMethodArgCount = -1;
-			for (int i = 0; i < validMethods.Count; i++)
+			foreach (MethodInfo method in validMethods)
 			{
-				MethodInfo method = validMethods[i];
-				ParameterInfo[] parameters = method.GetParameters();
 				bool canCastAll = true;
-				for (int j = 0; j < parameters.Length && j < args.Length; j++)
+				ParameterInfo[] parameters = method.GetParameters();
+				
+				// Go through all parameters to make sure there is a valid type for each one.
+				for (int i = 0; i < parameters.Length && i < args.Length; i++)
 				{
-					if (parameters[j].ParameterType != args[j].GetType())
+					if (!args[i].HasValidType(parameters[i].ParameterType))
 					{
-						if (parameters[j].ParameterType == typeof(float) && args[j] is int)
-						{
-							// Since an int argument can be implicitly converted to a float we do so here to ensure a method looking for it can use it.
-							int intObject = (int)args[j];
-							args[j] = (float)intObject;
-						}
-						else
-						{
-							canCastAll = false;
-						}
+						canCastAll = false;
+						break;
 					}
 				}
 
@@ -230,29 +224,14 @@ namespace LMirman.VespaIO
 			}
 			else if (bestMethod != null)
 			{
-				if (args.Length < bestMethodArgCount)
+				object[] invokeArgs = new object[bestMethodArgCount];
+				ParameterInfo[] parameters = bestMethod.GetParameters();
+				for (int i = 0; i < bestMethodArgCount; i++)
 				{
-					object[] newArgs = new object[bestMethodArgCount];
-					ParameterInfo[] parameters = bestMethod.GetParameters();
-					for (int i = 0; i < bestMethodArgCount; i++)
-					{
-						newArgs[i] = i < args.Length ? args[i] : parameters[i].DefaultValue;
-					}
-
-					args = newArgs;
-				}
-				else if (args.Length > bestMethodArgCount)
-				{
-					object[] newArgs = new object[bestMethodArgCount];
-					for (int i = 0; i < bestMethodArgCount; i++)
-					{
-						newArgs[i] = args[i];
-					}
-
-					args = newArgs;
+					invokeArgs[i] = i < args.Length ? args[i].GetValue(parameters[i].ParameterType) : parameters[i].DefaultValue;
 				}
 
-				bestMethod.Invoke(null, args);
+				bestMethod.Invoke(null, invokeArgs);
 			}
 			// No methods support the user input parameters.
 			else
@@ -271,24 +250,23 @@ namespace LMirman.VespaIO
 		/// <param name="longString">All parameters provided by the user in a single spaced string.</param>
 		/// <remarks>All output variables will be null if the parsing failed.</remarks>
 		/// <returns>True if the input was parsed properly, false if the parsing failed.</returns>
-		private static bool TryParseCommand(string input, out string commandName, out object[] args, out LongString longString)
+		private static bool TryParseCommand(string input, out string commandName, out Argument[] args, out LongString longString)
 		{
 			try
 			{
 				// Preprocess for alias command
-				input = ReplaceAlias(input);
 				List<string> splitInput = SplitIntoArgs(input);
 				commandName = splitInput[0].ToLower();
-				List<object> foundArgs = new List<object>();
+				List<Argument> foundArgs = new List<Argument>();
 				for (int i = 1; i < splitInput.Count; i++)
 				{
 					if (!string.IsNullOrWhiteSpace(splitInput[i]))
 					{
-						foundArgs.Add(ParseObject(splitInput[i]));
+						foundArgs.Add(new Argument(splitInput[i]));
 					}
 				}
 				args = foundArgs.ToArray();
-				longString = foundArgs.Count > 0 ? (LongString)input.Remove(0, commandName.Length + 1) : LongString.Empty;
+				longString = foundArgs.Count > 0 ? (LongString)input.Substring(commandName.Length) : LongString.Empty;
 				return true;
 			}
 			catch
@@ -398,9 +376,14 @@ namespace LMirman.VespaIO
 				}
 				else // The worst case scenario: There are some escaped quotes that we have to manually parse.
 				{
-					for (int i = 0; i < value.Length - 1; i++) // Shift goal by -1 because we need to look at the next character
+					for (int i = 0; i < value.Length; i++)
 					{
-						if (value[i] == '\\' && (value[i + 1] == '\\' || value[i + 1] == '\"'))
+						bool hasNextChar = i < value.Length - 1;
+						if (value[i] == '\"')
+						{
+							value = value.Remove(i, 1);
+						}
+						else if (hasNextChar && value[i] == '\\' && (value[i + 1] == '\\' || value[i + 1] == '\"'))
 						{
 							value = value.Remove(i, 1);
 						}
@@ -410,7 +393,112 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		private static object ParseObject(string arg) => int.TryParse(arg, out int intValue) ? (object)intValue : float.TryParse(arg, out float floatValue) ? (object)floatValue : (object)arg;
+		public class Argument
+		{
+			public readonly ArgType<int> intValue;
+			public readonly ArgType<float> floatValue;
+			public readonly ArgType<bool> boolValue;
+			public readonly ArgType<string> stringValue;
+
+			public bool HasValidType(Type type)
+			{
+				if (type == null)
+				{
+					return false;
+				}
+				else if (type == typeof(int))
+				{
+					return intValue.isValid;
+				}
+				else if (type == typeof(float))
+				{
+					return floatValue.isValid;
+				}
+				else if (type == typeof(bool))
+				{
+					return boolValue.isValid;
+				}
+				else if (type == typeof(string) || type == typeof(LongString))
+				{
+					return stringValue.isValid;
+				}
+				else
+				{
+					Log($"<color=red>Error:</color> Command arguments of type \"{type}\" are unsupported.");
+					return false;
+				}
+			}
+
+			public object GetValue(Type type)
+			{
+				if (type == null)
+				{
+					return false;
+				}
+				else if (type == typeof(int))
+				{
+					return intValue.value;
+				}
+				else if (type == typeof(float))
+				{
+					return floatValue.value;
+				}
+				else if (type == typeof(bool))
+				{
+					return boolValue.value;
+				}
+				else if (type == typeof(string))
+				{
+					return stringValue.value;
+				}
+				else if (type == typeof(LongString))
+				{
+					return (LongString)stringValue.value;
+				}
+				else
+				{
+					Log($"<color=red>Error:</color> Command arguments of type \"{type}\" are unsupported.");
+					return false;
+				}
+			}
+
+			public Argument(string source)
+			{
+				// Set string value
+				stringValue = new ArgType<string>(source, true);
+				
+				// Set int value
+				bool didParseInt = int.TryParse(source, out int intParse);
+				intValue = new ArgType<int>(didParseInt ? intParse : -1, didParseInt);
+				
+				// Set float value
+				bool didParseFloat = float.TryParse(source, out float floatParse);
+				floatValue = new ArgType<float>(didParseFloat ? floatParse : -1, didParseFloat);
+
+				// Set bool value
+				if (didParseInt)
+				{
+					boolValue = new ArgType<bool>(intParse > 0, true);
+				}
+				else
+				{
+					bool didParseBool = bool.TryParse(source, out bool boolParse);
+					boolValue = new ArgType<bool>(didParseBool && boolParse, didParseBool);
+				}
+			}
+		}
+
+		public class ArgType<T>
+		{
+			public readonly T value;
+			public readonly bool isValid;
+
+			public ArgType(T value, bool isValid)
+			{
+				this.value = value;
+				this.isValid = isValid;
+			}
+		}
 
 		[RuntimeInitializeOnLoadMethod]
 		private static void CreateConsole()
