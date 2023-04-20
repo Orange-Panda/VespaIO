@@ -311,7 +311,7 @@ namespace LMirman.VespaIO
 			}
 
 			string substring = input.Substring(0, substringLength).ToLower();
-			if (substring.Length > 0 && Aliases.Lookup.TryGetValue(substring, out string aliasValue))
+			if (substring.Length > 0 && Aliases.TryGetAlias(substring, out string aliasValue))
 			{
 				if (Commands.Lookup.ContainsKey(substring))
 				{

@@ -198,20 +198,7 @@ namespace LMirman.VespaIO
 		public static void SetAlias(string alias, string value)
 		{
 			//Validate alias name
-			alias = alias.ToLower();
-			if (alias.Contains(" "))
-			{
-				DevConsole.Log("<color=yellow>Warning:</color> Your alias contained spaces but spaces are unsupported. The spaces have been removed.");
-				alias = alias.Replace(" ", string.Empty);
-			}
-
-			Regex regex = new Regex(@"^[$a-z0-9_]*");
-			if (!regex.IsMatch(alias))
-			{
-				DevConsole.Log("<color=red>Error:</color> Your alias contained out of bounds characters. Aliases can only contain alphanumerical characters (a-z, 0-9) and the underscore character.");
-				return;
-			}
-
+			alias = alias.CleanseKey();
 			if (alias.Length == 0 || value.Length == 0)
 			{
 				DevConsole.Log("<color=red>Error:</color> Your alias or value was empty.");
@@ -219,36 +206,21 @@ namespace LMirman.VespaIO
 			}
 
 			// Set alias
-			if (Aliases.Lookup.ContainsKey(alias))
-			{
-				Aliases.Lookup[alias] = value;
-				DevConsole.Log($"<color=yellow>*</color> Modified alias \"{alias}\" to represent \"{value}\"");
-			}
-			else
-			{
-				Aliases.Lookup.Add(alias, value);
-				DevConsole.Log($"<color=green>+</color> Added alias \"{alias}\" to represent \"{value}\"");
-			}
-			Aliases.WriteLookup();
+			bool isNewAlias = Aliases.SetAlias(alias, value);
+			DevConsole.Log(isNewAlias
+				? $"<color=green>+</color> Added alias \"{alias}\" to represent \"{value}\""
+				: $"<color=yellow>*</color> Modified alias \"{alias}\" to represent \"{value}\"");
 		}
 
 		[StaticCommand("alias_delete", Name = "Delete Alias", Description = "Delete a particular alias definition")]
 		public static void DeleteAlias(string alias)
 		{
-			alias = alias.ToLower();
-			if (!Aliases.Lookup.ContainsKey(alias))
-			{
-				DevConsole.Log($"<color=red>Error:</color> Tried to remove alias \"{alias}\" but no such alias was found.");
-				return;
-			}
-
-			Aliases.Lookup.Remove(alias);
-			DevConsole.Log($"<color=red>-</color> Removed alias \"{alias}\".");
-			Aliases.WriteLookup();
+			bool didRemoveAlias = Aliases.RemoveAlias(alias);
+			DevConsole.Log(didRemoveAlias ? $"<color=red>-</color> Removed alias \"{alias}\"." : $"<color=yellow>Warning:</color> Tried to remove alias \"{alias}\" but no such alias was found.");
 		}
 
 		[StaticCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
-		public static void ResetAllAliases()
+		public static void ResetAllAliasesWarning()
 		{
 			DevConsole.Log("<color=orange>Alert:</color> This will remove <b>ALL</b> alias definitions!\nTo confirm alias reset please enter the following command: \"alias_reset_all CONFIRM\"");
 		}
@@ -258,34 +230,29 @@ namespace LMirman.VespaIO
 		{
 			if (confirmation == "CONFIRM")
 			{
-				Aliases.Reset();
+				Aliases.ResetAliases();
 				DevConsole.Log("<color=red>-</color> All aliases have been removed!");
 			}
 			else
 			{
-				ResetAllAliases();
+				ResetAllAliasesWarning();
 			}
 		}
 
 		[StaticCommand("alias_view", Name = "View Alias", Description = "View the definition for a particular alias")]
 		public static void ViewAlias(string alias)
 		{
-			alias = alias.ToLower();
-			if (!Aliases.Lookup.ContainsKey(alias))
-			{
-				DevConsole.Log($"<color=red>Error:</color> Tried to view alias \"{alias}\" but no such alias was found.");
-				return;
-			}
-
-			DevConsole.Log($"\"{alias}\" -> \"{Aliases.Lookup[alias]}\"");
+			DevConsole.Log(Aliases.TryGetAlias(alias, out string definition)
+				? $"\"{alias}\" -> \"{Aliases.GetAlias(definition)}\""
+				: $"<color=red>Error:</color> Tried to view alias \"{alias}\" but no such alias was found.");
 		}
 
 		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
 		public static void ListAlias(LongString filter)
 		{
-			string lowFilter = filter.value.ToLower();
+			string lowFilter = filter.value.CleanseKey();
 			DevConsole.Log($"--- Aliases Containing \"{filter}\" ---");
-			foreach (KeyValuePair<string, string> alias in Aliases.Lookup)
+			foreach (KeyValuePair<string, string> alias in Aliases.AllAliases)
 			{
 				if (alias.Key.Contains(lowFilter) || alias.Value.ToLower().Contains(lowFilter))
 				{
@@ -298,12 +265,12 @@ namespace LMirman.VespaIO
 		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
 		public static void ListAlias(int pageNum = 0)
 		{
-			int pageCount = Mathf.Max(Mathf.CeilToInt((float)Aliases.Lookup.Count / AliasPageLength), 1);
+			int pageCount = Mathf.Max(Mathf.CeilToInt((float)Aliases.AliasCount / AliasPageLength), 1);
 			pageNum = Mathf.Clamp(pageNum, 1, pageCount);
 			int remaining = AliasPageLength;
 			int ignore = (pageNum - 1) * AliasPageLength;
 			DevConsole.Log($"--- Aliases {pageNum}/{pageCount} ---");
-			foreach (KeyValuePair<string, string> alias in Aliases.Lookup)
+			foreach (KeyValuePair<string, string> alias in Aliases.AllAliases)
 			{
 				//Stop if we have print out enough commands
 				if (remaining <= 0)

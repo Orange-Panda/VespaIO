@@ -3,6 +3,16 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [PENDING] - PENDING
+
+### Added
+- Added public methods to the `Aliases` class to add support for adding, removing, and viewing alias definitions within your own code.
+
+### Changed
+- Key conversion is now much more strict and will cleanse key strings to be within (a-z, 0-9, and the _ character)
+	- This rule was already present but is now enforced more consistently
+    - This rule now also applies to alias keys. Alias keys saved to the disk prior to this change will be converted.
+
 ## [1.2.0] - 2022-10-09
 
 ### Added

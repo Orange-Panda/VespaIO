@@ -205,7 +205,7 @@ namespace LMirman.VespaIO
 		private static string FindNextFill(string searchString, List<string> excludeList)
 		{
 			searchString = searchString.ToLower();
-			foreach (KeyValuePair<string, string> pair in Aliases.Lookup)
+			foreach (KeyValuePair<string, string> pair in Aliases.AllAliases)
 			{
 				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key))
 				{
