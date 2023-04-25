@@ -212,8 +212,8 @@ namespace LMirman.VespaIO
 					return pair.Key;
 				}
 			}
-			
-			foreach (KeyValuePair<string, Command> pair in Commands.Lookup)
+
+			foreach (KeyValuePair<string, Command> pair in Commands.AllDefinitions)
 			{
 				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.CheatsEnabled && !(Application.isEditor && ConsoleSettings.Config.editorAutoEnableCheats));
 				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key) && !hidden)

@@ -129,7 +129,7 @@ namespace LMirman.VespaIO
 			}
 
 			// Find the command in the Commands lookup table
-			if (!Commands.Lookup.TryGetValue(commandName, out Command command))
+			if (!Commands.TryGetCommand(commandName, out Command command))
 			{
 				Log($"<color=red>Error:</color> Unrecognized command \"{commandName}\"");
 				return;
@@ -313,7 +313,7 @@ namespace LMirman.VespaIO
 			string substring = input.Substring(0, substringLength).ToLower();
 			if (substring.Length > 0 && Aliases.TryGetAlias(substring, out string aliasValue))
 			{
-				if (Commands.Lookup.ContainsKey(substring))
+				if (Commands.ContainsCommand(substring))
 				{
 					Log($"<color=orange>Alert:</color> There is an alias defined at \"{substring}\" but there is already a command with the same name. The command is given priority so you are encouraged to remove your alias.");
 				}

@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using UnityEngine;
+using System.Text.RegularExpressions;
 
 namespace LMirman.VespaIO
 {
-	internal static class Commands
+	public static class Commands
 	{
-		internal static Dictionary<string, Command> Lookup { get; private set; }
+		private static readonly Dictionary<string, Command> Lookup = new Dictionary<string, Command>();
+
+		public static IEnumerable<Command> AllCommands => Lookup.Values;
+		public static IEnumerable<KeyValuePair<string, Command>> AllDefinitions => Lookup;
 
 		static Commands()
 		{
@@ -26,160 +28,243 @@ namespace LMirman.VespaIO
 		internal static void PreloadLookup() { }
 
 		/// <summary>
-		/// Build the <see cref="Lookup"/> Dictionary for the <see cref="DevConsole"/>.
+		/// Build the <see cref="Lookup"/> Dictionary for all command attributes in the project.
 		/// </summary>
-		/// <remarks>This is VERY expensive on the garbage collector. Need a more efficient way to do this if possible. Fortunately this is only done once so even if this is the only way it can be done its not too bad.</remarks>
 		private static void BuildLookupTable()
 		{
-			Lookup = new Dictionary<string, Command>();
-			List<Type> classes = AppDomain.CurrentDomain.GetAssemblies()
-				.SelectMany(x => x.GetTypes())
-				.Where(x => x.IsClass).ToList();
-
-			IEnumerable<MethodInfo> staticMethods = classes.SelectMany(x => x.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly))
-				.Where(x => x.GetCustomAttribute(typeof(StaticCommandAttribute), false) != null);
-
-			List<KeyValuePair<StaticCommandAttribute, MethodInfo>> priorityCommands = new List<KeyValuePair<StaticCommandAttribute, MethodInfo>>();
-			List<KeyValuePair<StaticCommandAttribute, MethodInfo>> commands = new List<KeyValuePair<StaticCommandAttribute, MethodInfo>>();
-			foreach (MethodInfo method in staticMethods)
+			Assembly[] assemblies = GetAssembliesFromDomain(AppDomain.CurrentDomain, ConsoleSettings.Config.assemblyFilter);
+			List<Type> classes = GetClassesFromAssemblies(assemblies);
+			List<StaticCommand> staticCommands = GetStaticCommandsFromClasses(classes);
+			foreach (StaticCommand staticCommand in staticCommands)
 			{
-				foreach (object attribute in method.GetCustomAttributes(typeof(StaticCommandAttribute), false))
-				{
-					StaticCommandAttribute command = attribute as StaticCommandAttribute;
-					if (command.ManualPriority)
-					{
-						priorityCommands.Add(new KeyValuePair<StaticCommandAttribute, MethodInfo>(command, method));
-					}
-					else
-					{
-						commands.Add(new KeyValuePair<StaticCommandAttribute, MethodInfo>(command, method));
-					}
-				}
-			}
-
-			foreach (KeyValuePair<StaticCommandAttribute, MethodInfo> pair in priorityCommands.OrderBy(pair => pair.Key.Key))
-			{
-				StaticCommandAttribute command = pair.Key;
-				MethodInfo method = pair.Value;
-
-				if (Lookup.ContainsKey(command.Key))
-				{
-					Lookup[command.Key].AddMethod(command, method);
-				}
-				else
-				{
-					Lookup.Add(command.Key, new Command(command, method));
-				}
-			}
-
-			foreach (KeyValuePair<StaticCommandAttribute, MethodInfo> pair in commands.OrderBy(pair => pair.Key.Key))
-			{
-				StaticCommandAttribute command = pair.Key;
-				MethodInfo method = pair.Value;
-
-				if (Lookup.ContainsKey(command.Key))
-				{
-					Lookup[command.Key].AddMethod(command, method);
-				}
-				else
-				{
-					Lookup.Add(command.Key, new Command(command, method));
-				}
+				RegisterCommand(staticCommand.attribute, staticCommand.methodInfo);
 			}
 
 #if UNITY_EDITOR // Only done in editor since the end user should not care about this message and not checking this dramatically improves performance.
 			if (ConsoleSettings.Config.warnForNonstaticMethods)
 			{
-				IEnumerable<MethodInfo> instancedMethods = classes.SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly))
-					.Where(x => x.GetCustomAttribute(typeof(StaticCommandAttribute), false) != null);
-
-				foreach (MethodInfo method in instancedMethods)
+				List<StaticCommand> instancedMethods = GetInstanceCommandsFromClasses(classes);
+				foreach (StaticCommand staticCommand in instancedMethods)
 				{
-					foreach (object attribute in method.GetCustomAttributes(typeof(StaticCommandAttribute), false))
-					{
-						StaticCommandAttribute command = attribute as StaticCommandAttribute;
-						string message = $"<color=red>ERROR:</color> Static command attribute with key {command.Key} is a applied to non-static method {method.Name}, which is unsupported. The method will not be added to the console.";
-						DevConsole.Log(message);
-					}
+					string message =
+						$"<color=red>ERROR:</color> Static command attribute with key {staticCommand.attribute.Key} is a applied to non-static method {staticCommand.methodInfo.Name}, which is unsupported. The method will not be added to the console.";
+					DevConsole.Log(message);
 				}
 			}
 #endif
 		}
-	}
 
-	public class Command
-	{
-		public readonly string Key;
+		private static readonly Regex SystemAssemblyRegex = new Regex("^(?!unity|system|mscorlib|mono|log4net|newtonsoft|nunit|jetbrains)", RegexOptions.IgnoreCase);
 
-		public string Name { get; private set; }
-		public string Description { get; private set; }
-		public string Guide { get; private set; }
-		public bool Cheat { get; private set; }
-		public bool Hidden { get; private set; }
-
-		public List<MethodInfo> Methods { get; } = new List<MethodInfo>();
-
-		public Command(StaticCommandAttribute attribute, MethodInfo method)
+		/// <summary>
+		/// Get an array of all assemblies that the user would like to check for commands within.
+		/// </summary>
+		private static Assembly[] GetAssembliesFromDomain(AppDomain domain, AssemblyFilter assemblyFilter)
 		{
-			Key = attribute.Key;
-			Name = attribute.Name == string.Empty ? method.Name : attribute.Name;
-			Description = attribute.Description;
-			Guide = $"Usage: {Key} ";
-			ParameterInfo[] parameters = method.GetParameters();
-			for (int i = 0; i < parameters.Length; i++)
+			Assembly[] assemblies = domain.GetAssemblies();
+			switch (assemblyFilter)
 			{
-				Guide += $"[{TranslateParameter(parameters[i].ParameterType)}] ";
+				case AssemblyFilter.Standard:
+					List<Assembly> validAssemblies = new List<Assembly>();
+					foreach (Assembly assembly in assemblies)
+					{
+						if (assembly != null && SystemAssemblyRegex.IsMatch(assembly.FullName))
+						{
+							validAssemblies.Add(assembly);
+						}
+					}
+
+					return validAssemblies.ToArray();
+				case AssemblyFilter.Exhaustive:
+					return assemblies;
+				default:
+					throw new ArgumentOutOfRangeException();
 			}
-			Cheat = attribute.Cheat;
-			Hidden = attribute.Hidden;
-			Methods.Add(method);
 		}
 
-		public void AddMethod(StaticCommandAttribute attribute, MethodInfo method)
+		/// <summary>
+		/// Get a list of all classes within an array of assemblies
+		/// </summary>
+		private static List<Type> GetClassesFromAssemblies(Assembly[] assemblies)
 		{
-			if (!string.IsNullOrWhiteSpace(attribute.Name))
+			List<Type> classes = new List<Type>();
+			foreach (Assembly assembly in assemblies)
 			{
-				Name = attribute.Name;
+				Type[] types = assembly.GetTypes();
+				foreach (Type type in types)
+				{
+					if (type.IsClass)
+					{
+						classes.Add(type);
+					}
+				}
 			}
 
-			if (!string.IsNullOrWhiteSpace(attribute.Description))
-			{
-				Description = attribute.Description;
-			}
-
-			Cheat = Cheat || attribute.Cheat;
-			Hidden = Hidden || attribute.Hidden;
-			Guide += $"\nUsage: {Key} ";
-			ParameterInfo[] parameters = method.GetParameters();
-			for (int i = 0; i < parameters.Length; i++)
-			{
-				Guide += $"[{TranslateParameter(parameters[i].ParameterType)}] ";
-			}
-			Methods.Add(method);
+			return classes;
 		}
 
-		private static string TranslateParameter(Type type)
+		private const BindingFlags StaticMethodBindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
+
+		private static List<StaticCommand> GetStaticCommandsFromClasses(List<Type> classes)
 		{
-			if (type == typeof(int))
+			List<StaticCommand> commands = new List<StaticCommand>();
+			foreach (Type type in classes)
 			{
-				return "INTEGER";
+				foreach (MethodInfo method in type.GetMethods(StaticMethodBindingFlags))
+				{
+					object[] customAttributes = method.GetCustomAttributes(typeof(StaticCommandAttribute), false);
+					foreach (object customAttribute in customAttributes)
+					{
+						if (customAttribute is StaticCommandAttribute staticCommandAttribute)
+						{
+							commands.Add(new StaticCommand(staticCommandAttribute, method));
+						}
+					}
+				}
 			}
-			else if (type == typeof(float))
+
+			commands.Sort(new CommandComparer());
+			return commands;
+		}
+
+		private const BindingFlags InstanceMethodBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
+
+		private static List<StaticCommand> GetInstanceCommandsFromClasses(List<Type> classes)
+		{
+			List<StaticCommand> commands = new List<StaticCommand>();
+			foreach (Type type in classes)
 			{
-				return "FLOAT";
+				foreach (MethodInfo method in type.GetMethods(InstanceMethodBindingFlags))
+				{
+					object[] customAttributes = method.GetCustomAttributes(typeof(StaticCommandAttribute), false);
+					foreach (object customAttribute in customAttributes)
+					{
+						if (customAttribute is StaticCommandAttribute attribute)
+						{
+							commands.Add(new StaticCommand(attribute, method));
+						}
+					}
+				}
 			}
-			else if (type == typeof(string))
+
+			commands.Sort(new CommandComparer());
+			return commands;
+		}
+
+		public static bool ContainsCommand(string key)
+		{
+			return Lookup.ContainsKey(key.CleanseKey());
+		}
+
+		public static bool TryGetCommand(string key, out Command command)
+		{
+			return Lookup.TryGetValue(key.CleanseKey(), out command);
+		}
+
+		public static Command GetCommand(string key, Command fallbackCommand = null)
+		{
+			return TryGetCommand(key.CleanseKey(), out Command command) ? command : fallbackCommand;
+		}
+
+		public static void RegisterCommand(StaticCommandAttribute attribute, MethodInfo methodInfo)
+		{
+			string key = attribute.Key.CleanseKey();
+			if (TryGetCommand(key, out Command command))
 			{
-				return "WORD";
-			}
-			else if (type == typeof(LongString))
-			{
-				return "PHRASE";
+				command.AddMethod(attribute, methodInfo);
 			}
 			else
 			{
-				return "INVALID/UNKNOWN";
+				command = new Command(attribute, methodInfo);
+				Lookup.Add(key, command);
 			}
+		}
+
+		/// <summary>
+		/// Unregister a specific method definition for a console command.
+		/// </summary>
+		/// <param name="key">The key of the command you would like to remove.</param>
+		/// <param name="methodInfo">The method you would like to unregister for the command</param>
+		public static void UnregisterCommand(string key, MethodInfo methodInfo)
+		{
+			key = key.CleanseKey();
+			if (TryGetCommand(key, out Command command))
+			{
+				command.RemoveMethod(methodInfo);
+
+				if (!command.HasMethod)
+				{
+					Lookup.Remove(key);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Unregister all command definitions for a particular key.
+		/// </summary>
+		/// <param name="key">The key of the command you would like to remove.</param>
+		public static void UnregisterCommand(string key)
+		{
+			key = key.CleanseKey();
+			Lookup.Remove(key);
+		}
+
+		private class StaticCommand
+		{
+			public readonly StaticCommandAttribute attribute;
+			public readonly MethodInfo methodInfo;
+
+			public StaticCommand(StaticCommandAttribute attribute, MethodInfo methodInfo)
+			{
+				this.attribute = attribute;
+				this.methodInfo = methodInfo;
+			}
+		}
+
+		private class CommandComparer : IComparer<StaticCommand>
+		{
+			public int Compare(StaticCommand x, StaticCommand y)
+			{
+				if (x == null)
+				{
+					return 0;
+				}
+				else if (y == null)
+				{
+					return -1;
+				}
+				else if (x.attribute.ManualPriority > y.attribute.ManualPriority)
+				{
+					return -1;
+				}
+				else if (x.attribute.ManualPriority < y.attribute.ManualPriority)
+				{
+					return 1;
+				}
+				else
+				{
+					return string.CompareOrdinal(x.attribute.Key, y.attribute.Key);
+				}
+			}
+		}
+
+		public enum AssemblyFilter
+		{
+			/// <summary>
+			/// This search type will search only assemblies that are likely to contain commands.
+			/// </summary>
+			/// <remarks>
+			/// This specifically ignores assemblies that <b>begin</b> with "unity", "system", "mscorlib", "mono", "log4net", "newtonsoft", "nunit", "jetbrains" (Case insensitive).
+			/// </remarks>
+			Standard,
+			/// <summary>
+			/// This search type will search every single assembly: including one's that <see cref="Standard"/> would have assumed to contain no commands.
+			/// </summary>
+			/// <remarks>
+			/// This assembly filter type should only be used in cases where the <see cref="Standard"/> type is accidentally ignoring assemblies that contain commands.
+			/// Using this filter will have a significant negative performance impact so use with caution!
+			/// </remarks>
+			Exhaustive
 		}
 	}
 }

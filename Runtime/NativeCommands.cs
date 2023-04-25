@@ -12,7 +12,7 @@ namespace LMirman.VespaIO
 	{
 		private const int HelpPageLength = 10;
 
-		[StaticCommand("quit", Name = "Quit Application", Description = "Closes the application", ManualPriority = true)]
+		[StaticCommand("quit", Name = "Quit Application", Description = "Closes the application", ManualPriority = 70)]
 		public static void Quit()
 		{
 #if UNITY_EDITOR
@@ -27,7 +27,7 @@ namespace LMirman.VespaIO
 			DevConsole.PrintWelcome();
 		}
 
-		[StaticCommand("clear", Name = "Clear Console History", Description = "Clears the entire console history including this command's execution. Usage is recommended when the history grows too large or the application freezes when logging occurs.", ManualPriority = true)]
+		[StaticCommand("clear", Name = "Clear Console History", Description = "Clears the entire console history including this command's execution. Usage is recommended when the history grows too large or the application freezes when logging occurs.", ManualPriority = 80)]
 		public static void Clear()
 		{
 			DevConsole.Clear();
@@ -77,7 +77,7 @@ namespace LMirman.VespaIO
 		}
 
 		#region Help Commands
-		[StaticCommand("help", Name = "Help Manual", Description = "Search for commands and get assistance with particular commands.", ManualPriority = true)]
+		[StaticCommand("help", Name = "Help Manual", Description = "Search for commands and get assistance with particular commands.", ManualPriority = 90)]
 		public static void Help()
 		{
 			LogPage();
@@ -93,7 +93,7 @@ namespace LMirman.VespaIO
 		public static void Help(LongString query)
 		{
 			string value = ((string)query).ToLower();
-			if (Commands.Lookup.TryGetValue(value, out Command command))
+			if (Commands.TryGetCommand(value, out Command command))
 			{
 				DevConsole.LogCommandHelp(command);
 			}
@@ -106,7 +106,7 @@ namespace LMirman.VespaIO
 		private static int CountPages()
 		{
 			List<Command> commands = new List<Command>();
-			foreach (Command command in Commands.Lookup.Values)
+			foreach (Command command in Commands.AllCommands)
 			{
 				if (!commands.Contains(command) && !IsCommandHidden(command))
 				{
@@ -125,7 +125,7 @@ namespace LMirman.VespaIO
 			int remaining = HelpPageLength;
 			int ignore = (page - 1) * HelpPageLength;
 			DevConsole.Log($"========== Help: Page {page}/{pageCount} ==========");
-			foreach (Command command in Commands.Lookup.Values)
+			foreach (Command command in Commands.AllCommands)
 			{
 				//Stop if we have print out enough commands
 				if (remaining <= 0)
@@ -155,7 +155,7 @@ namespace LMirman.VespaIO
 		{
 			DevConsole.Log($"========== Commands Containing \"{key}\" ==========");
 			List<Command> commands = new List<Command>();
-			foreach (Command command in Commands.Lookup.Values)
+			foreach (Command command in Commands.AllCommands)
 			{
 				if ((command.Key.Contains(key) || command.Name.ToLower().Contains(key)) && !commands.Contains(command))
 				{

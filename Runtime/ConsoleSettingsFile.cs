@@ -37,9 +37,11 @@ namespace LMirman.VespaIO
 		[Tooltip("The default state of the console enabled variable in a standalone build (i.e non-editor)")]
 		public bool defaultConsoleEnableStandalone = true;
 		[Tooltip("If a cheat command is used in the editor should cheats automatically be enabled?")]
-		public bool editorAutoEnableCheats = false;
+		public bool editorAutoEnableCheats;
 		[Tooltip("When should the commands be preloaded into memory? This will take some time depending on the size of your project and will only occur once per play session. Selecting none will load commands upon the first command input.")]
-		public DevConsole.PreloadType preloadType;
+		public DevConsole.PreloadType preloadType = DevConsole.PreloadType.None;
+		[Tooltip("The method by which assemblies are picked for command selection")]
+		public Commands.AssemblyFilter assemblyFilter = Commands.AssemblyFilter.Standard;
 
 		[Header("Console")]
 		[Tooltip("When true will automatically create an instance of the console when the game starts.")]
@@ -83,6 +85,7 @@ namespace LMirman.VespaIO
 			defaultConsoleEnableStandalone = defaultConsoleEnableStandalone,
 			editorAutoEnableCheats = editorAutoEnableCheats,
 			preloadType = preloadType,
+			assemblyFilter = assemblyFilter,
 			instantiateConsoleOnLoad = instantiateConsoleOnLoad,
 			consoleResourcePath = consoleResourcePath,
 			consoleScale = consoleScale,
@@ -108,7 +111,7 @@ namespace LMirman.VespaIO
 		private ConsoleSettingsConfig config;
 
 		/// <summary>
-		/// Create a deep copy of the configuartion allowing it to be mutated in memory without modifying the asset's config.
+		/// Create a deep copy of the configuration allowing it to be mutated in memory without modifying the asset's config.
 		/// </summary>
 		public ConsoleSettingsConfig DeepCopy() => config.DeepCopy();
 	}
