@@ -15,5 +15,15 @@ namespace LMirman.VespaIO.Editor.Tests
 			actual = actual.CleanseKey();
 			Assert.AreEqual(actual, expected);
 		}
+
+		[TestCase("phrase", "phrase")]
+		[TestCase("echo \"semicolon is ;\"", "echo \"semicolon is ;\"")]
+		[TestCase("echo \"escape with \\;\"", "echo \"escape with \\;\"")]
+		[TestCase("echo \\;", "echo ;")]
+		public void Vespa_SplitStringBySemicolon(string input, string expected)
+		{
+			string actual = CommandInvocation.SplitStringBySemicolon(input)[0];
+			Assert.AreEqual(actual, expected);
+		}
 	}
 }

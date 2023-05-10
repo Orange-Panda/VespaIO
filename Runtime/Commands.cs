@@ -171,7 +171,8 @@ namespace LMirman.VespaIO
 			string key = attribute.Key.CleanseKey();
 			if (TryGetCommand(key, out Command command))
 			{
-				command.AddMethod(attribute, methodInfo);
+				command.AddMethod(methodInfo);
+				command.SetAttributeProperties(attribute);
 			}
 			else
 			{

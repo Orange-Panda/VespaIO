@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System;
 
 namespace LMirman.VespaIO
@@ -5,42 +6,27 @@ namespace LMirman.VespaIO
 	/// <summary>
 	/// When added to a static method, adds it to the <see cref="Commands.Lookup"/> when it is initialized. WARNING: Will not function on non-static methods.
 	/// </summary>
+	[PublicAPI]
+	[MeansImplicitUse]
 	[AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
 	public class StaticCommandAttribute : Attribute
 	{
-		/// <summary>
-		/// The identifier for the command. When this is input into the console it will point to this command.
-		/// </summary>
+		/// <inheritdoc cref="Command.Key"/>
 		public string Key { get; private set; }
 		
-		/// <summary>
-		/// The name of the command as shown in the manual. If not provided will generate with the name of the method the command is attached to.
-		/// </summary>
+		/// <inheritdoc cref="Command.Name"/>
 		public string Name { get; set; } = string.Empty;
 		
-		/// <summary>
-		/// The description of the command as shown in the manual. If not provided will be blank.
-		/// </summary>
+		/// <inheritdoc cref="Command.Description"/>
 		public string Description { get; set; } = string.Empty;
 		
-		/// <summary>
-		/// Determines if this command is a cheat command, thus requiring <see cref="DevConsole.CheatsEnabled"/> to be true for it's execution.
-		/// </summary>
-		/// <remarks>
-		/// If multiple command methods are labeled with the same key and any of them have cheats set to true that key is marked as a cheat key.
-		/// Therefore all commands with the same key are considered cheats regardless of their own value.<br/>
-		/// Cheat commands are hidden from the manual while cheats are not enabled.
-		/// </remarks>
+		/// <inheritdoc cref="Command.Cheat"/>
 		public bool Cheat { get; set; }
 		
-		/// <summary>
-		/// Determines if this command is hidden from help manual searches. Hidden commands can still be inspected directly and executed.
-		/// </summary>
+		/// <inheritdoc cref="Command.Hidden"/>
 		public bool Hidden { get; set; }
-		
-		/// <summary>
-		/// The priority of this command in the manual. The higher the value the earlier this command will appear in the help menu.
-		/// </summary>
+
+		/// <inheritdoc cref="Command.ManualPriority"/>
 		public int ManualPriority { get; set; }
 
 		/// <summary>

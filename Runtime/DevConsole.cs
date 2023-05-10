@@ -57,62 +57,30 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			submitText = ReplaceAlias(submitText);
-			SplitInput(submitText);
-		}
-
-		private static void SplitInput(string submitText)
-		{
-			// If the command doesn't even have a semicolon we can immediately submit it
-			if (!submitText.Contains(";"))
+			List<string> preAliasInputs = CommandInvocation.SplitStringBySemicolon(submitText);
+			foreach (string preAliasInput in preAliasInputs)
 			{
-				ProcessCommand(submitText);
-				return;
-			}
-
-			List<string> inputs = new List<string>();
-			bool inQuote = false;
-			int escapeCount = 0;
-			int substringStart = 0;
-			int substringLength = 0;
-			for (int i = 0; i < submitText.Length; i++)
-			{
-				// Group quotes into a single command.
-				if (submitText[i] == '\"' && escapeCount % 2 == 0)
+				CommandInvocation.AliasOutcome aliasOutcome = CommandInvocation.SubstituteAliasForCommand(preAliasInput, out string aliasCommandOutput);
+				switch (aliasOutcome)
 				{
-					inQuote = !inQuote;
+					case CommandInvocation.AliasOutcome.NoChange:
+						ProcessCommand(preAliasInput);
+						break;
+					case CommandInvocation.AliasOutcome.AliasApplied:
+						Log($"<color=yellow>></color> {aliasCommandOutput}");
+						List<string> postAliasInputs = CommandInvocation.SplitStringBySemicolon(aliasCommandOutput);
+						foreach (string postAliasInput in postAliasInputs)
+						{
+							ProcessCommand(postAliasInput);
+						}
+						break;
+					case CommandInvocation.AliasOutcome.CommandConflict:
+						Log($"<color=orange>Alert:</color> There is an alias defined at \"{aliasCommandOutput}\" but there is already a command with the same name. The command is given priority so you are encouraged to remove your alias.");
+						ProcessCommand(preAliasInput);
+						break;
+					default:
+						throw new ArgumentOutOfRangeException();
 				}
-				
-				// If we encounter an unescaped semicolon, begin a new command.
-				if (submitText[i] == ';' && escapeCount % 2 == 0 && !inQuote)
-				{
-					// This split has no content. Skip it.
-					if (substringLength == 0)
-					{
-						substringStart = i + 1;
-						continue;
-					}
-
-					inputs.Add(submitText.Substring(substringStart, substringLength));
-					substringStart = i + 1;
-					substringLength = 0;
-					continue;
-				}
-
-				escapeCount = submitText[i] == '\\' ? escapeCount + 1 : 0;
-				substringLength++;
-			}
-
-			// Add the last command input
-			if (substringLength > 0)
-			{
-				inputs.Add(submitText.Substring(substringStart, substringLength));
-			}
-
-			// Process each split input
-			foreach (string command in inputs)
-			{
-				ProcessCommand(command.Replace("\\;", ";"));
 			}
 		}
 
@@ -151,98 +119,10 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			// Filter out methods in the command that have more required parameters than the user has input
-			List<MethodInfo> validMethods = new List<MethodInfo>();
-			for (int i = 0; i < command.Methods.Count; i++)
+			if (command.TryGetMethod(args, longString, out MethodInfo methodInfo, out object[] methodParameters))
 			{
-				MethodInfo method = command.Methods[i];
-				ParameterInfo[] parameters = method.GetParameters();
-				int requiredParams = 0;
-
-				for (int j = 0; j < parameters.Length; j++)
-				{
-					if (!parameters[j].IsOptional)
-					{
-						requiredParams++;
-					}
-				}
-
-				if (args.Length >= requiredParams)
-				{
-					validMethods.Add(method);
-				}
+				methodInfo.Invoke(null, methodParameters);
 			}
-
-			// Exit if no methods are valid for the parameters provided by the user
-			if (validMethods.Count <= 0)
-			{
-				if (args.Length > 0)
-				{
-					Log("<color=red>Error:</color> Not enough arguments provided for command");
-				}
-
-				LogCommandHelp(command);
-				return;
-			}
-
-			// Get the best method from the arguments
-			// The best method is the one with all parameters of the same type and the most parameters matched
-			MethodInfo longStringMethod = null;
-			MethodInfo bestMethod = null;
-			int bestMethodValue = 0;
-			int bestMethodArgCount = -1;
-			foreach (MethodInfo method in validMethods)
-			{
-				bool canCastAll = true;
-				int value = 0;
-				ParameterInfo[] parameters = method.GetParameters();
-				
-				// Go through all parameters to make sure there is a valid type for each one.
-				for (int i = 0; i < parameters.Length && i < args.Length; i++)
-				{
-					Type parameterType = parameters[i].ParameterType;
-					if (parameterType != typeof(LongString) && parameterType != typeof(string))
-					{
-						value++;
-					}
-					
-					if (!args[i].HasValidType(parameterType))
-					{
-						canCastAll = false;
-						break;
-					}
-				}
-
-				if (canCastAll && (parameters.Length > bestMethodArgCount || (parameters.Length >= bestMethodArgCount && value >= bestMethodValue)))
-				{
-					bestMethod = method;
-					bestMethodArgCount = parameters.Length;
-					bestMethodValue = value;
-				}
-
-				if (parameters.Length == 1 && parameters[0].ParameterType == typeof(LongString))
-				{
-					longStringMethod = method;
-				}
-			}
-
-			// Execute the best method found in the previous step, if one is found
-			if (longStringMethod != null && !string.IsNullOrWhiteSpace(longString) && (bestMethod == null || bestMethodArgCount == 0))
-			{
-				longStringMethod.Invoke(null, new object[] { longString });
-			}
-			else if (bestMethod != null)
-			{
-				object[] invokeArgs = new object[bestMethodArgCount];
-				ParameterInfo[] parameters = bestMethod.GetParameters();
-				for (int i = 0; i < bestMethodArgCount; i++)
-				{
-					invokeArgs[i] = i < args.Length ? args[i].GetValue(parameters[i].ParameterType) : parameters[i].DefaultValue;
-				}
-
-				bestMethod.Invoke(null, invokeArgs);
-			}
-			// No methods support the user input parameters.
 			else
 			{
 				Log("<color=red>Error:</color> Invalid arguments provided for command");
@@ -287,6 +167,7 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		[Obsolete]
 		private static string ReplaceAlias(string input)
 		{
 			input = input.TrimStart(' ');
@@ -399,113 +280,6 @@ namespace LMirman.VespaIO
 					}
 					return value;
 				}
-			}
-		}
-
-		public class Argument
-		{
-			public readonly ArgType<int> intValue;
-			public readonly ArgType<float> floatValue;
-			public readonly ArgType<bool> boolValue;
-			public readonly ArgType<string> stringValue;
-
-			public bool HasValidType(Type type)
-			{
-				if (type == null)
-				{
-					return false;
-				}
-				else if (type == typeof(int))
-				{
-					return intValue.isValid;
-				}
-				else if (type == typeof(float))
-				{
-					return floatValue.isValid;
-				}
-				else if (type == typeof(bool))
-				{
-					return boolValue.isValid;
-				}
-				else if (type == typeof(string) || type == typeof(LongString))
-				{
-					return stringValue.isValid;
-				}
-				else
-				{
-					Log($"<color=red>Error:</color> Command arguments of type \"{type}\" are unsupported.");
-					return false;
-				}
-			}
-
-			public object GetValue(Type type)
-			{
-				if (type == null)
-				{
-					return false;
-				}
-				else if (type == typeof(int))
-				{
-					return intValue.value;
-				}
-				else if (type == typeof(float))
-				{
-					return floatValue.value;
-				}
-				else if (type == typeof(bool))
-				{
-					return boolValue.value;
-				}
-				else if (type == typeof(string))
-				{
-					return stringValue.value;
-				}
-				else if (type == typeof(LongString))
-				{
-					return (LongString)stringValue.value;
-				}
-				else
-				{
-					Log($"<color=red>Error:</color> Command arguments of type \"{type}\" are unsupported.");
-					return false;
-				}
-			}
-
-			public Argument(string source)
-			{
-				// Set string value
-				stringValue = new ArgType<string>(source, true);
-				
-				// Set int value
-				bool didParseInt = int.TryParse(source, out int intParse);
-				intValue = new ArgType<int>(didParseInt ? intParse : -1, didParseInt);
-				
-				// Set float value
-				bool didParseFloat = float.TryParse(source, out float floatParse);
-				floatValue = new ArgType<float>(didParseFloat ? floatParse : -1, didParseFloat);
-
-				// Set bool value
-				if (didParseInt)
-				{
-					boolValue = new ArgType<bool>(intParse > 0, true);
-				}
-				else
-				{
-					bool didParseBool = bool.TryParse(source, out bool boolParse);
-					boolValue = new ArgType<bool>(didParseBool && boolParse, didParseBool);
-				}
-			}
-		}
-
-		public class ArgType<T>
-		{
-			public readonly T value;
-			public readonly bool isValid;
-
-			public ArgType(T value, bool isValid)
-			{
-				this.value = value;
-				this.isValid = isValid;
 			}
 		}
 

@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - Added public methods to the `Aliases` class to add support for adding, removing, and viewing alias definitions within your own code.
 - Added public methods to the `Commands` class to add support for adding, removing, and viewing command definitions within your own code.
+- Added the JetBrain's `[MeansImplicitUse]` attribute to the `[StaticCommand]` attribute to automatically supress `Method never used` intellisense warnings for commands.
 
 ## [1.2.0] - 2022-10-09
 

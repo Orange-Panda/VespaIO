@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +9,7 @@ namespace LMirman.VespaIO
 	/// <summary>
 	/// Handles alias definitions for creating shortcuts for complicated commands in the <see cref="DevConsole"/>
 	/// </summary>
+	[PublicAPI]
 	public static class Aliases
 	{
 		private const string DirectoryName = "VespaIO";
@@ -17,14 +19,17 @@ namespace LMirman.VespaIO
 		/// The directory of the folder containing the alias preferences file.
 		/// </summary>
 		private static string DirectoryPath => $"{Application.persistentDataPath}/{DirectoryName}";
+
 		/// <summary>
 		/// The path to the alias preferences file.
 		/// </summary>
 		private static string DataPath => $"{DirectoryPath}/{PrefsFileName}";
+
 		/// <summary>
 		/// The total number of alias definitions.
 		/// </summary>
 		public static int AliasCount => Lookup.Count;
+
 		/// <summary>
 		/// An IEnumerable to iterate over each alias definition.
 		/// </summary>
