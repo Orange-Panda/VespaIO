@@ -39,14 +39,14 @@ namespace LMirman.VespaIO
 		}
 
 		[StaticCommand("scene", Cheat = true)]
-		public static void Scene(LongString target)
+		public static void Scene(string target)
 		{
 			DevConsole.Log($"Attempting to load scene: {target}");
 			SceneManager.LoadScene(target);
 		}
 
 		[StaticCommand("echo", Name = "Echo", Description = "Repeat the input back to the console.")]
-		public static void Echo(LongString message)
+		public static void Echo(string message)
 		{
 			DevConsole.Log(message);
 		}
@@ -89,9 +89,9 @@ namespace LMirman.VespaIO
 		}
 
 		[StaticCommand("help")]
-		public static void Help(LongString query)
+		public static void Help(string query)
 		{
-			string value = ((string)query).ToLower();
+			string value = query.ToLower();
 			if (Commands.TryGetCommand(value, out Command command))
 			{
 				DevConsole.LogCommandHelp(command);
@@ -247,9 +247,9 @@ namespace LMirman.VespaIO
 		}
 
 		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
-		public static void ListAlias(LongString filter)
+		public static void ListAlias(string filter)
 		{
-			string lowFilter = filter.value.CleanseKey();
+			string lowFilter = filter.CleanseKey();
 			DevConsole.Log($"--- Aliases Containing \"{filter}\" ---");
 			foreach (KeyValuePair<string, string> alias in Aliases.AllAliases)
 			{

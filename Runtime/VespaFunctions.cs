@@ -151,11 +151,11 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		public static List<string> GetWordsFromString(string input, bool removeSpecialSyntax = true)
+		public static List<Word> GetWordsFromString(string input, bool removeSpecialSyntax = true)
 		{
-			List<string> output = new List<string>();
+			List<Word> output = new List<Word>();
 			bool inQuote = false;
-			bool forceSubmit = false;
+			bool isLiteral = false;
 			int escapeCount = 0;
 			WordStringBuilder.Clear();
 			foreach (char inputChar in input)
@@ -166,7 +166,7 @@ namespace LMirman.VespaIO
 				if (inputChar == '"' && !isEscaped)
 				{
 					inQuote = !inQuote;
-					forceSubmit = true;
+					isLiteral = true;
 				}
 
 				// If we encounter a space and are not in quote mode, begin a new word.
@@ -190,12 +190,12 @@ namespace LMirman.VespaIO
 			void SubmitWord()
 			{
 				string substring = WordStringBuilder.ToString();
-				if (forceSubmit || !string.IsNullOrWhiteSpace(substring))
+				if (isLiteral || !string.IsNullOrWhiteSpace(substring))
 				{
-					output.Add(substring);
+					output.Add(new Word(substring, isLiteral));
 				}
 
-				forceSubmit = false;
+				isLiteral = false;
 				WordStringBuilder.Clear();
 			}
 		}

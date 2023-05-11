@@ -39,10 +39,10 @@ namespace LMirman.VespaIO
 		{
 			try
 			{
-				List<string> splitInput = VespaFunctions.GetWordsFromString(input);
+				List<Word> words = VespaFunctions.GetWordsFromString(input);
 
 				// Error Case: There was nothing input!
-				if (splitInput.Count == 0)
+				if (words.Count == 0)
 				{
 					validState = ValidState.ErrorEmpty;
 					inputKey = string.Empty;
@@ -50,19 +50,14 @@ namespace LMirman.VespaIO
 				}
 
 				// The input key is always the first word.
-				inputKey = splitInput[0].CleanseKey();
-
-				// Create a long string starting to the right of the first space following the input key.
-				int substringStart = splitInput[0].Length + 1;
-				LongString longString = input.Length > substringStart ? LongString.RemoveQuotes((LongString)input.Substring(substringStart)) : LongString.Empty;
+				inputKey = words[0].text.CleanseKey();
 
 				// Assemble an array of Arguments from the input.
 				// We reuse a static readonly list to minimize garbage collection.
 				ArgumentList.Clear();
-				for (int i = 1; i < splitInput.Count; i++)
+				for (int i = 1; i < words.Count; i++)
 				{
-					string parameter = splitInput[i];
-					ArgumentList.Add(new Argument(parameter));
+					ArgumentList.Add(new Argument(words[i]));
 				}
 
 				Argument[] arguments = ArgumentList.ToArray();
@@ -76,7 +71,7 @@ namespace LMirman.VespaIO
 				}
 
 				// See if there is a valid method for this invocation
-				if (!command.TryGetMethod(arguments, longString, out methodInfo, out methodParameters))
+				if (!command.TryGetMethod(arguments, out methodInfo, out methodParameters))
 				{
 					validState = ValidState.ErrorNoMethodForParameters;
 					return;
@@ -112,7 +107,7 @@ namespace LMirman.VespaIO
 			}
 			catch (Exception e)
 			{
-				exception = e;
+				exception = e.InnerException ?? e;
 				return InvokeResult.Exception;
 			}
 		}

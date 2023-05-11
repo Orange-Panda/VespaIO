@@ -217,7 +217,8 @@ namespace LMirman.VespaIO
 		/// </summary>
 		/// <remarks>
 		/// This omits methods that contain more non-optional parameters than arguments provided since there is no possible way to invoke them without making assumptions.<br/>
-		/// This <b>does</b> include methods that have less parameters than arguments since such methods can simply not use the extra arguments if they so choose.
+		/// This <b>does</b> include methods that have less parameters than arguments since such methods can simply not use the extra arguments if they so choose.<br/>
+		/// Always includes specifically the `Argument[]` method
 		/// </remarks>
 		public List<MethodInfo> GetValidMethods(Argument[] arguments)
 		{
@@ -234,7 +235,7 @@ namespace LMirman.VespaIO
 					}
 				}
 
-				if (arguments.Length >= requiredParams)
+				if (arguments.Length >= requiredParams || GetIsArgumentArrayMethod(parameters))
 				{
 					validMethods.Add(method);
 				}
@@ -243,15 +244,7 @@ namespace LMirman.VespaIO
 			return validMethods;
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="arguments"></param>
-		/// <param name="longString"></param>
-		/// <param name="methodInfo"></param>
-		/// <param name="methodParameters"></param>
-		/// <returns></returns>
-		public bool TryGetMethod(Argument[] arguments, LongString longString, out MethodInfo methodInfo, out object[] methodParameters)
+		public bool TryGetMethod(Argument[] arguments, out MethodInfo methodInfo, out object[] methodParameters)
 		{
 			// Get all methods that contain at least
 			List<MethodInfo> validMethods = GetValidMethods(arguments);
@@ -259,17 +252,16 @@ namespace LMirman.VespaIO
 			int bestMethodValue = 0;
 			int bestMethodArgCount = -1;
 			MethodInfo bestMethod = null;
-			MethodInfo longStringMethod = null;
+			MethodInfo pureMethod = null;
 			foreach (MethodInfo method in validMethods)
 			{
-				// Immediately check if this method is a LongString method
 				ParameterInfo[] parameters = method.GetParameters();
-				if (parameters.Length == 1 && parameters[0].ParameterType == typeof(LongString))
+				if (GetIsArgumentArrayMethod(parameters))
 				{
-					longStringMethod = method;
-					continue;
+					pureMethod = method;
+					break;
 				}
-				
+
 				// Value is determined by the number of arguments that are a great match for the parameters of the method being checked 
 				// A great match is an argument being the exact type expected for the method that specifically isn't a string
 				// ---
@@ -285,7 +277,7 @@ namespace LMirman.VespaIO
 				for (int i = 0; i < parameters.Length && i < arguments.Length; i++)
 				{
 					Type parameterType = parameters[i].ParameterType;
-					if (parameterType != typeof(LongString) && parameterType != typeof(string))
+					if (parameterType != typeof(string))
 					{
 						value++;
 					}
@@ -307,11 +299,10 @@ namespace LMirman.VespaIO
 				}
 			}
 
-			// Pick the LongString method when it exists if there is no best method with arguments that are not of String or LongString.
-			if (longStringMethod != null && (bestMethod == null || bestMethodArgCount == 0 || (bestMethodArgCount != arguments.Length && bestMethodValue == 0)))
+			if (pureMethod != null)
 			{
-				methodInfo = longStringMethod;
-				methodParameters = new object[] { longString };
+				methodInfo = pureMethod;
+				methodParameters = new object[] { arguments };
 				return true;
 			}
 			else if (bestMethod != null)
@@ -326,7 +317,6 @@ namespace LMirman.VespaIO
 				methodInfo = bestMethod;
 				return true;
 			}
-			// No methods support the user input parameters.
 			else
 			{
 				methodInfo = null;
@@ -360,6 +350,11 @@ namespace LMirman.VespaIO
 			Guide = GuideBuilder.ToString();
 		}
 
+		private static bool GetIsArgumentArrayMethod(ParameterInfo[] parameters)
+		{
+			return parameters.Length == 1 && parameters[0].ParameterType == typeof(Argument[]);
+		}
+
 		private static string TranslateParameter(Type type)
 		{
 			if (type == typeof(int))
@@ -372,11 +367,11 @@ namespace LMirman.VespaIO
 			}
 			else if (type == typeof(string))
 			{
-				return "[WORD]";
+				return "[STRING]";
 			}
-			else if (type == typeof(LongString))
+			else if (type == typeof(Argument[]))
 			{
-				return "[PHRASE]";
+				return "[ARGUMENTS]";
 			}
 			else
 			{

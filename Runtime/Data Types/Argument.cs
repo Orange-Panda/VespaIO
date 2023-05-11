@@ -20,17 +20,17 @@ namespace LMirman.VespaIO
 		public readonly ArgType<bool> boolValue;
 		public readonly ArgType<string> stringValue;
 
-		public Argument(string source)
+		public Argument(Word word)
 		{
 			// Set string value
-			stringValue = new ArgType<string>(source, true);
+			stringValue = new ArgType<string>(word.text, true);
 
 			// Set int value
-			bool didParseInt = int.TryParse(source, out int intParse);
+			bool didParseInt = !word.isLiteral & int.TryParse(word.text, out int intParse);
 			intValue = new ArgType<int>(didParseInt ? intParse : -1, didParseInt);
 
 			// Set float value
-			bool didParseFloat = float.TryParse(source, out float floatParse);
+			bool didParseFloat = !word.isLiteral & float.TryParse(word.text, out float floatParse);
 			floatValue = new ArgType<float>(didParseFloat ? floatParse : -1, didParseFloat);
 
 			// Set bool value
@@ -40,7 +40,7 @@ namespace LMirman.VespaIO
 			}
 			else
 			{
-				bool didParseBool = bool.TryParse(source, out bool boolParse);
+				bool didParseBool = !word.isLiteral & bool.TryParse(word.text, out bool boolParse);
 				boolValue = new ArgType<bool>(didParseBool && boolParse, didParseBool);
 			}
 		}
@@ -63,7 +63,7 @@ namespace LMirman.VespaIO
 			{
 				return boolValue.isValid;
 			}
-			else if (type == typeof(string) || type == typeof(LongString))
+			else if (type == typeof(string))
 			{
 				return stringValue.isValid;
 			}
@@ -95,10 +95,6 @@ namespace LMirman.VespaIO
 			else if (type == typeof(string))
 			{
 				return stringValue.value;
-			}
-			else if (type == typeof(LongString))
-			{
-				return (LongString)stringValue.value;
 			}
 			else
 			{

@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ### Breaking Changes
 
+- The `LongString` type has been completely removed in favor of using quotation blocks around command input.
+	- This means that previous LongString methods now take a string input and you are required to put quotations around your phrase.
+	- Alternatively you can use `Argument[]` to handle a dynamic amount of commands.
 - `ManualPriority` for `StaticCommand` is now of type `int` instead of `bool` enabling finer tuning of the sorting of the help manual.
 	- This is only a breaking change if you are currently setting the ManualPriority on any of your own commands.
 	- Native commands will only use the inclusive range of `-100-100` so if you want to guarantee your command shows before or after native commands consider this range.
@@ -24,6 +27,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Added public methods to the `Aliases` class to add support for adding, removing, and viewing alias definitions within your own code.
 - Added public methods to the `Commands` class to add support for adding, removing, and viewing command definitions within your own code.
 - Added the JetBrain's `[MeansImplicitUse]` attribute to the `[StaticCommand]` attribute to automatically supress `Method never used` intellisense warnings for commands.
+- Added support for `Argument[]` commands which can dynamically handle any amount of parameters.
+	- If this parameter is ever present it will *always* be invoked.
 
 ## [1.2.0] - 2022-10-09
 
