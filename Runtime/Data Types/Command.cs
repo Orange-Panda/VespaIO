@@ -262,17 +262,24 @@ namespace LMirman.VespaIO
 			MethodInfo longStringMethod = null;
 			foreach (MethodInfo method in validMethods)
 			{
+				// Immediately check if this method is a LongString method
+				ParameterInfo[] parameters = method.GetParameters();
+				if (parameters.Length == 1 && parameters[0].ParameterType == typeof(LongString))
+				{
+					longStringMethod = method;
+					continue;
+				}
+				
 				// Value is determined by the number of arguments that are a great match for the parameters of the method being checked 
 				// A great match is an argument being the exact type expected for the method that specifically isn't a string
 				// ---
-				// The reason we ignore string is because if there were MethodA(string) and MethodA(float) for the same command...
-				// we give priority to the MethodA(float) since a string parameter will practically always be fulfilled while...
-				// a float parameter is much less likely to be fulfilled, therefore when it is we should use it over string.
+				// The reason we ignore string is because if there were MethodA(string) and MethodB(float) for the same command...
+				// we give priority to the MethodB(float) since a string parameter will practically always be fulfilled while...
+				// a float parameter is much less likely to be fulfilled, therefore when it is fulfilled we should use it over string.
 				int value = 0;
 
 				// True when all arguments can be cast to the parameter type of the method being checked
 				bool canCastAll = true;
-				ParameterInfo[] parameters = method.GetParameters();
 
 				// Go through all parameters to make sure there is a valid type for each one.
 				for (int i = 0; i < parameters.Length && i < arguments.Length; i++)
@@ -290,21 +297,18 @@ namespace LMirman.VespaIO
 					}
 				}
 
-				if (canCastAll && (parameters.Length > bestMethodArgCount || (parameters.Length >= bestMethodArgCount && value >= bestMethodValue)))
+				bool fulfillsMoreTotalParameters = parameters.Length > bestMethodArgCount;
+				bool fulfillsMoreValuableParameters = parameters.Length >= bestMethodArgCount && value >= bestMethodValue;
+				if (canCastAll && (fulfillsMoreTotalParameters || fulfillsMoreValuableParameters))
 				{
 					bestMethod = method;
 					bestMethodArgCount = parameters.Length;
 					bestMethodValue = value;
 				}
-
-				if (parameters.Length == 1 && parameters[0].ParameterType == typeof(LongString))
-				{
-					longStringMethod = method;
-				}
 			}
 
-			// Execute the best method found in the previous step, if one is found
-			if (longStringMethod != null && !string.IsNullOrWhiteSpace(longString) && (bestMethod == null || bestMethodArgCount == 0))
+			// Pick the LongString method when it exists if there is no best method with arguments that are not of String or LongString.
+			if (longStringMethod != null && (bestMethod == null || bestMethodArgCount == 0 || (bestMethodArgCount != arguments.Length && bestMethodValue == 0)))
 			{
 				methodInfo = longStringMethod;
 				methodParameters = new object[] { longString };

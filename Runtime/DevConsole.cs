@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text;
 using UnityEngine;
 
@@ -33,22 +32,12 @@ namespace LMirman.VespaIO
 
 		public static void ProcessInput(string submitText)
 		{
-			if (submitText == null)
-			{
-				Log("<color=red>Error:</color> Input command was null.");
-				return;
-			}
-			
-			// Add the command to history if it was not the most recent command sent.
-			if ((RecentCommands.Count <= 0 || !RecentCommands.First.Value.Equals(submitText)) && !string.IsNullOrWhiteSpace(submitText))
-			{
-				RecentCommands.AddFirst(submitText);
-			}
+			RecordCommandInHistory(submitText);
 
-			// Restrict list to certain capacity
-			while (RecentCommands.Count > 0 && RecentCommands.Count > ConsoleSettings.Config.commandHistoryCapacity)
+			if (string.IsNullOrWhiteSpace(submitText))
 			{
-				RecentCommands.RemoveLast();
+				Log("<color=red>Error:</color> Input command was null or empty.");
+				return;
 			}
 
 			if (!ConsoleEnabled)
@@ -57,25 +46,27 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			List<string> preAliasInputs = Invocation.SplitStringBySemicolon(submitText);
+			List<string> preAliasInputs = VespaFunctions.SplitStringBySemicolon(submitText);
 			foreach (string preAliasInput in preAliasInputs)
 			{
-				Invocation.AliasOutcome aliasOutcome = Invocation.SubstituteAliasForCommand(preAliasInput, out string aliasCommandOutput);
+				VespaFunctions.AliasOutcome aliasOutcome = VespaFunctions.SubstituteAliasForCommand(preAliasInput, out string aliasCommandOutput);
 				switch (aliasOutcome)
 				{
-					case Invocation.AliasOutcome.NoChange:
+					case VespaFunctions.AliasOutcome.NoChange:
 						ProcessCommand(preAliasInput);
 						break;
-					case Invocation.AliasOutcome.AliasApplied:
+					case VespaFunctions.AliasOutcome.AliasApplied:
 						Log($"<color=yellow>></color> {aliasCommandOutput}");
-						List<string> postAliasInputs = Invocation.SplitStringBySemicolon(aliasCommandOutput);
+						List<string> postAliasInputs = VespaFunctions.SplitStringBySemicolon(aliasCommandOutput);
 						foreach (string postAliasInput in postAliasInputs)
 						{
 							ProcessCommand(postAliasInput);
 						}
+
 						break;
-					case Invocation.AliasOutcome.CommandConflict:
-						Log($"<color=orange>Alert:</color> There is an alias defined at \"{aliasCommandOutput}\" but there is already a command with the same name. The command is given priority so you are encouraged to remove your alias.");
+					case VespaFunctions.AliasOutcome.CommandConflict:
+						Log(
+							$"<color=orange>Alert:</color> There is an alias defined at \"{aliasCommandOutput}\" but there is already a command with the same name. The command is given priority so you are encouraged to remove your alias.");
 						ProcessCommand(preAliasInput);
 						break;
 					default:
@@ -84,86 +75,78 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		private static void RecordCommandInHistory(string submitText)
+		{
+			// Add the command to history if it was not the most recent command sent.
+			if (!string.IsNullOrWhiteSpace(submitText) && (RecentCommands.Count <= 0 || !RecentCommands.First.Value.Equals(submitText)))
+			{
+				RecentCommands.AddFirst(submitText);
+			}
+
+			// Restrict list to certain capacity
+			while (RecentCommands.Count > Mathf.Max(ConsoleSettings.Config.commandHistoryCapacity, 0))
+			{
+				RecentCommands.RemoveLast();
+			}
+		}
+
 		private static void ProcessCommand(string commandText)
 		{
-			// Remove leading space
-			commandText = commandText.TrimStart(' ');
-			
-			// Parse input into useful variables
-			if (!TryParseCommand(commandText, out string commandName, out Argument[] args, out LongString longString))
+			Invocation invocation = new Invocation(commandText);
+			switch (invocation.validState)
 			{
-				Log("<color=red>Error:</color> Invalid command syntax");
-				return;
+				case Invocation.ValidState.Valid:
+					RunInvocation(invocation);
+					break;
+				case Invocation.ValidState.Unspecified:
+					Log("<color=red>Error:</color> An internal error occurred.");
+					break;
+				case Invocation.ValidState.ErrorException:
+					Log("<color=red>Error:</color> An internal error occurred.");
+					break;
+				case Invocation.ValidState.ErrorEmpty:
+					Log("<color=red>Error:</color> The provided command was empty or invalid.");
+					break;
+				case Invocation.ValidState.ErrorNoCommandFound:
+					Log($"<color=red>Error:</color> Unrecognized command \"{invocation.inputKey}\"");
+					break;
+				case Invocation.ValidState.ErrorNoMethodForParameters:
+					Log("<color=red>Error:</color> Invalid arguments provided for command");
+					LogCommandHelp(invocation.command);
+					break;
+				default:
+					throw new ArgumentOutOfRangeException();
 			}
+		}
 
-			// Find the command in the Commands lookup table
-			if (!Commands.TryGetCommand(commandName, out Command command))
-			{
-				Log($"<color=red>Error:</color> Unrecognized command \"{commandName}\"");
-				return;
-			}
-
+		public static void RunInvocation(Invocation invocation)
+		{
 #if UNITY_EDITOR
 			// Automatically enable cheats if configured to do so in the config, making quick debugging more convenient when enabled.
-			if (command.Cheat && !CheatsEnabled && ConsoleSettings.Config.editorAutoEnableCheats)
+			if (invocation.command.Cheat && !CheatsEnabled && ConsoleSettings.Config.editorAutoEnableCheats)
 			{
 				Log("<color=yellow>Cheats have automatically been enabled.</color>");
 				CheatsEnabled = true;
 			}
 #endif
 
-			// Test the command found that it can be executed if it is a cheat
-			if (command.Cheat && !CheatsEnabled)
+			Invocation.InvokeResult invokeResult = invocation.RunInvocation(out Exception exception);
+			switch (invokeResult)
 			{
-				Log("<color=red>Error:</color> Command provided can only be used when cheats are enabled");
-				return;
-			}
-
-			if (command.TryGetMethod(args, longString, out MethodInfo methodInfo, out object[] methodParameters))
-			{
-				methodInfo.Invoke(null, methodParameters);
-			}
-			else
-			{
-				Log("<color=red>Error:</color> Invalid arguments provided for command");
-				LogCommandHelp(command);
-			}
-		}
-
-		/// <summary>
-		/// Parse the user input into convenient variables for the console to handle.
-		/// </summary>
-		/// <param name="input">The user input to parse</param>
-		/// <param name="commandName">The name of the command that the user has input</param>
-		/// <param name="args">None to many long array of the arguments provided by the user.</param>
-		/// <param name="longString">All parameters provided by the user in a single spaced string.</param>
-		/// <remarks>All output variables will be null if the parsing failed.</remarks>
-		/// <returns>True if the input was parsed properly, false if the parsing failed.</returns>
-		private static bool TryParseCommand(string input, out string commandName, out Argument[] args, out LongString longString)
-		{
-			try
-			{
-				// Preprocess for alias command
-				List<string> splitInput = Invocation.GetWordsFromString(input);
-				commandName = splitInput[0].ToLower();
-				List<Argument> foundArgs = new List<Argument>();
-				for (int i = 1; i < splitInput.Count; i++)
-				{
-					if (!string.IsNullOrWhiteSpace(splitInput[i]))
-					{
-						foundArgs.Add(new Argument(splitInput[i]));
-					}
-				}
-				args = foundArgs.ToArray();
-				longString = foundArgs.Count > 0 ? (LongString)input.Substring(commandName.Length) : LongString.Empty;
-				return true;
-			}
-			catch
-			{
-				args = null;
-				commandName = null;
-				longString = null;
-				return false;
+				case Invocation.InvokeResult.Success:
+					break;
+				case Invocation.InvokeResult.Exception:
+					Log("<color=red>Error:</color> An internal error occurred while running an invocation.");
+					Log(exception.Message);
+					break;
+				case Invocation.InvokeResult.ErrorInvocationWasInvalid:
+					Log("<color=red>Error:</color> Tried to run an invalid invocation.");
+					break;
+				case Invocation.InvokeResult.ErrorRequiresCheats:
+					Log("<color=red>Error:</color> Command provided can only be used when cheats are enabled");
+					break;
+				default:
+					throw new ArgumentOutOfRangeException();
 			}
 		}
 
@@ -217,6 +200,7 @@ namespace LMirman.VespaIO
 			{
 				Output.AppendLine();
 			}
+
 			Output.Append(message);
 			OutputUpdate.Invoke();
 		}

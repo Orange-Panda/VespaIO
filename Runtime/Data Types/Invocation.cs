@@ -1,195 +1,156 @@
-using JetBrains.Annotations;
+using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Reflection;
 
 namespace LMirman.VespaIO
 {
 	public class Invocation
 	{
+		/// <summary>
+		/// If this object is valid or not.
+		/// Can determine is valid by checking if equal to <see cref="ValidState.Valid"/>, if it is not this invocation is not valid.
+		/// More details about why it is not valid is also defined by this type.
+		/// </summary>
 		public readonly ValidState validState;
-		public readonly string inputText;
+
+		/// <summary>
+		/// The input command key that was found from the input.
+		/// </summary>
+		public readonly string inputKey;
+
+		/// <summary>
+		/// The command that was found, if any, for this invocation.
+		/// </summary>
 		public readonly Command command;
-		public readonly Argument[] arguments;
-		public readonly LongString longString;
 
-		public Invocation(string inputText)
-		{
-			this.inputText = inputText;
-		}
+		private readonly MethodInfo methodInfo;
+		private readonly object[] methodParameters;
+
+		private static readonly List<Argument> ArgumentList = new List<Argument>(32);
 
 		/// <summary>
-		/// Takes a raw input string and substitutes an alias command at the beginning with its alias definition
+		/// Create an invocation object for a command based on a character string.
 		/// </summary>
-		/// <returns>The input string after having the alias replaced with its definition</returns>
-		[Pure]
-		public static AliasOutcome SubstituteAliasForCommand(string input, out string output)
+		/// <remarks>
+		/// At this stage semicolons are handled as a standard character since this is a single command.
+		/// </remarks>
+		/// <param name="input">The text that was input for command invocation</param>
+		public Invocation(string input)
 		{
-			int substringLength = 0;
-			foreach (char inputChar in input)
+			try
 			{
-				if (inputChar == ' ')
+				List<string> splitInput = VespaFunctions.GetWordsFromString(input);
+
+				// Error Case: There was nothing input!
+				if (splitInput.Count == 0)
 				{
-					break;
+					validState = ValidState.ErrorEmpty;
+					inputKey = string.Empty;
+					return;
 				}
 
-				substringLength++;
-			}
+				// The input key is always the first word.
+				inputKey = splitInput[0].CleanseKey();
 
-			string substring = input.Substring(0, substringLength).CleanseKey();
-			if (string.IsNullOrWhiteSpace(substring) || !Aliases.TryGetAlias(substring, out string aliasValue))
-			{
-				output = input;
-				return AliasOutcome.NoChange;
+				// Create a long string starting to the right of the first space following the input key.
+				int substringStart = splitInput[0].Length + 1;
+				LongString longString = input.Length > substringStart ? LongString.RemoveQuotes((LongString)input.Substring(substringStart)) : LongString.Empty;
+
+				// Assemble an array of Arguments from the input.
+				// We reuse a static readonly list to minimize garbage collection.
+				ArgumentList.Clear();
+				for (int i = 1; i < splitInput.Count; i++)
+				{
+					string parameter = splitInput[i];
+					ArgumentList.Add(new Argument(parameter));
+				}
+
+				Argument[] arguments = ArgumentList.ToArray();
+				ArgumentList.Clear();
+
+				// See if there is a valid command for this invocation
+				if (!Commands.TryGetCommand(inputKey, out command))
+				{
+					validState = ValidState.ErrorNoCommandFound;
+					return;
+				}
+
+				// See if there is a valid method for this invocation
+				if (!command.TryGetMethod(arguments, longString, out methodInfo, out methodParameters))
+				{
+					validState = ValidState.ErrorNoMethodForParameters;
+					return;
+				}
+
+				// After all the steps have occurred successfully we have a valid invocation.
+				validState = ValidState.Valid;
 			}
-			else if (Commands.ContainsCommand(substring))
+			catch
 			{
-				output = substring;
-				return AliasOutcome.CommandConflict;
-			}
-			else
-			{
-				output = aliasValue + input.Substring(substringLength);
-				return AliasOutcome.AliasApplied;
+				validState = ValidState.ErrorException;
 			}
 		}
 
-		/// <summary>
-		/// Split the input string by unescaped and unquoted semicolons.
-		/// </summary>
-		/// <example>
-		/// Input `phrase;echo "semicolon is ;";echo "escape with \;";echo \;;` will output strings by default:<br/>
-		/// - `phrase`<br/>
-		/// - `echo "semicolon is ;"`<br/>
-		/// - `echo "escape with \;"`<br/>
-		/// - `echo ;`.
-		/// </example>>
-		/// <param name="input">The input string to split.</param>
-		/// <param name="includeSemicolonEscapes">When true will include the \ character on escaped semicolons. Does not apply to quoted and escaped semicolons.</param>
-		/// <param name="includeFinalSemicolon">When true includes the final semicolon in the output string.</param>
-		/// <returns>A list of none to many strings output by the split. Will not include null or empty strings.</returns>
-		public static List<string> SplitStringBySemicolon(string input, bool includeSemicolonEscapes = false, bool includeFinalSemicolon = false)
+		public InvokeResult RunInvocation(out Exception exception)
 		{
-			List<string> output = new List<string>();
-
-			// We can skip this entire process if there isn't any semicolon in the first place.
-			if (!input.Contains(";"))
+			try
 			{
-				output.Add(input);
-				return output;
-			}
-
-			bool inQuote = false;
-			int escapeCount = 0;
-			StringBuilder stringBuilder = new StringBuilder();
-			foreach (char inputChar in input)
-			{
-				bool isEscaped = escapeCount % 2 == 1;
-
-				// If there is an unescaped quotation, we should toggle quote mode and not submit semicolons while within it.
-				if (inputChar == '\"' && !isEscaped)
+				exception = null;
+				if (validState != ValidState.Valid)
 				{
-					inQuote = !inQuote;
+					return InvokeResult.ErrorInvocationWasInvalid;
 				}
-
-				escapeCount = inputChar == '\\' ? escapeCount + 1 : 0;
-
-				// Submit a new output when the ; character is reached
-				if (inputChar == ';' && !isEscaped && !inQuote)
+				else if (command.Cheat && !DevConsole.CheatsEnabled)
 				{
-					if (includeFinalSemicolon)
-					{
-						stringBuilder.Append(inputChar);
-					}
-
-					SubmitWord(stringBuilder, output);
-				}
-				else if (inputChar == ';' && isEscaped && !inQuote)
-				{
-					if (!includeSemicolonEscapes)
-					{
-						stringBuilder.Remove(stringBuilder.Length - 1, 1);
-					}
-
-					stringBuilder.Append(inputChar);
+					return InvokeResult.ErrorRequiresCheats;
 				}
 				else
 				{
-					stringBuilder.Append(inputChar);
+					methodInfo.Invoke(null, methodParameters);
+					return InvokeResult.Success;
 				}
 			}
-
-			SubmitWord(stringBuilder, output);
-			return output;
-		}
-
-		public static List<string> GetWordsFromString(string input, bool removeSpecialSyntax = true)
-		{
-			List<string> output = new List<string>();
-			bool inQuote = false;
-			int escapeCount = 0;
-			StringBuilder stringBuilder = new StringBuilder();
-			foreach (char inputChar in input)
+			catch (Exception e)
 			{
-				bool isEscaped = escapeCount % 2 == 1;
-
-				// If we encounter an unescaped quote mark, toggle quote mode.
-				if (inputChar == '"' && !isEscaped)
-				{
-					inQuote = !inQuote;
-				}
-
-				// If we encounter a space and are not in quote mode, begin a new word.
-				if (inputChar == ' ' && !inQuote)
-				{
-					SubmitWord(stringBuilder, output);
-					escapeCount = 0;
-					continue;
-				}
-
-				escapeCount = inputChar == '\\' ? escapeCount + 1 : 0;
-				if (!removeSpecialSyntax || (inputChar != '\\' && inputChar != '"') || isEscaped)
-				{
-					stringBuilder.Append(inputChar);
-				}
+				exception = e;
+				return InvokeResult.Exception;
 			}
-
-			SubmitWord(stringBuilder, output);
-			return output;
-		}
-
-		private static void SubmitWord(StringBuilder stringBuilder, List<string> list)
-		{
-			if (stringBuilder.Length > 0)
-			{
-				string substring = stringBuilder.ToString().Trim(' ');
-				if (!string.IsNullOrWhiteSpace(substring))
-				{
-					list.Add(substring);
-				}
-
-				stringBuilder.Clear();
-			}
-		}
-
-		public enum AliasOutcome
-		{
-			/// <summary>
-			/// No alias existed. Returns the input unchanged.
-			/// </summary>
-			NoChange,
-			/// <summary>
-			/// An alias was applied to the command with no issues. Returns modified input with alias definition instead of alias key.
-			/// </summary>
-			AliasApplied,
-			/// <summary>
-			/// An alias existed but there is a command that is identical to the alias. Returns the name of the command/alias that had a conflict.
-			/// </summary>
-			CommandConflict
 		}
 
 		public enum ValidState
 		{
-			Valid, ErrorInvalidSyntax, ErrorInvalidCommand
+			/// <summary>
+			/// Default state for an invocation. Only output if a critical error occurred, assume Invalid.
+			/// </summary>
+			Unspecified,
+			/// <summary>
+			/// The invocation is valid and will function properly.
+			/// </summary>
+			Valid,
+			/// <summary>
+			/// The invocation is invalid due to an exception occuring during method generation.
+			/// </summary>
+			ErrorException,
+			/// <summary>
+			/// The invocation is invalid due to the input being null, empty, or whitespace.
+			/// </summary>
+			ErrorEmpty,
+			/// <summary>
+			/// The invocation is invalid because there was no command found for the input text.
+			/// </summary>
+			ErrorNoCommandFound,
+			/// <summary>
+			/// The invocation is invalid because there was no method possible for the parameters provided.
+			/// </summary>
+			ErrorNoMethodForParameters
+		}
+
+		public enum InvokeResult
+		{
+			Exception,
+			Success,
+			ErrorInvocationWasInvalid,
+			ErrorRequiresCheats
 		}
 	}
 }
