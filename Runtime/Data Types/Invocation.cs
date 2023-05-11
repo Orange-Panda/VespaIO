@@ -4,7 +4,7 @@ using System.Text;
 
 namespace LMirman.VespaIO
 {
-	public class CommandInvocation
+	public class Invocation
 	{
 		public readonly ValidState validState;
 		public readonly string inputText;
@@ -12,11 +12,9 @@ namespace LMirman.VespaIO
 		public readonly Argument[] arguments;
 		public readonly LongString longString;
 
-		public CommandInvocation(string inputText)
+		public Invocation(string inputText)
 		{
 			this.inputText = inputText;
-
-			// Parse input text
 		}
 
 		/// <summary>
@@ -103,7 +101,7 @@ namespace LMirman.VespaIO
 						stringBuilder.Append(inputChar);
 					}
 
-					SubmitValue();
+					SubmitWord(stringBuilder, output);
 				}
 				else if (inputChar == ';' && isEscaped && !inQuote)
 				{
@@ -120,112 +118,56 @@ namespace LMirman.VespaIO
 				}
 			}
 
-			SubmitValue();
+			SubmitWord(stringBuilder, output);
 			return output;
-
-			void SubmitValue()
-			{
-				if (stringBuilder.Length > 0)
-				{
-					string substring = stringBuilder.ToString().TrimStart(' ');
-					if (!string.IsNullOrWhiteSpace(substring))
-					{
-						output.Add(substring);
-					}
-
-					stringBuilder.Clear();
-				}
-			}
 		}
 
 		public static List<string> GetWordsFromString(string input, bool removeSpecialSyntax = true)
 		{
 			List<string> output = new List<string>();
 			bool inQuote = false;
-			bool hasEscapedQuote = false;
 			int escapeCount = 0;
-			int substringStart = 0;
-			int substringLength = 0;
-			for (int i = 0; i < input.Length; i++)
+			StringBuilder stringBuilder = new StringBuilder();
+			foreach (char inputChar in input)
 			{
+				bool isEscaped = escapeCount % 2 == 1;
+
 				// If we encounter an unescaped quote mark, toggle quote mode.
-				if (input[i] == '"' && escapeCount % 2 == 0)
+				if (inputChar == '"' && !isEscaped)
 				{
 					inQuote = !inQuote;
 				}
-				// Notify that there is an escaped quote that needs to be manually parsed later.
-				else if (input[i] == '"' && escapeCount % 2 == 1)
-				{
-					hasEscapedQuote = true;
-				}
 
-				// If we encounter a space and are not in quote mode, begin a new split.
-				if (input[i] == ' ' && !inQuote)
+				// If we encounter a space and are not in quote mode, begin a new word.
+				if (inputChar == ' ' && !inQuote)
 				{
-					SubmitWord();
-					substringStart = i + 1;
-					substringLength = 0;
-					hasEscapedQuote = false;
+					SubmitWord(stringBuilder, output);
+					escapeCount = 0;
 					continue;
 				}
 
-				escapeCount = input[i] == '\\' ? escapeCount + 1 : 0;
-				substringLength++;
+				escapeCount = inputChar == '\\' ? escapeCount + 1 : 0;
+				if (!removeSpecialSyntax || (inputChar != '\\' && inputChar != '"') || isEscaped)
+				{
+					stringBuilder.Append(inputChar);
+				}
 			}
 
-			// Add the last command input
-			SubmitWord();
-
+			SubmitWord(stringBuilder, output);
 			return output;
+		}
 
-			void SubmitWord()
+		private static void SubmitWord(StringBuilder stringBuilder, List<string> list)
+		{
+			if (stringBuilder.Length > 0)
 			{
-				if (substringLength > 0)
+				string substring = stringBuilder.ToString().Trim(' ');
+				if (!string.IsNullOrWhiteSpace(substring))
 				{
-					output.Add(GetSubstring());
+					list.Add(substring);
 				}
-			}
 
-			string GetSubstring()
-			{
-				string value = input.Substring(substringStart, substringLength);
-
-				// Remove special syntax from words
-				// Case: The output doesn't want to clean so we don't need to do anything!
-				if (!removeSpecialSyntax)
-				{
-					return value;
-				}
-				// Case: There are no quote characters at all, therefore we only need to remove escaped escape characters
-				else if (!value.Contains("\""))
-				{
-					return value.Replace("\\\\", "\\");
-				}
-				// Case: All quotes are unescaped, therefore we can just remove them all without checking for escape characters.
-				// This is because the escape character is only meant to be printed when it is escaped.
-				// We also replace escaped escape character with a regular backslash.
-				else if (!hasEscapedQuote)
-				{
-					return value.Replace("\"", string.Empty).Replace("\\\\", "\\");
-				}
-				// Case: Worst case scenario of there being escaped quotes that we have to filter out character by character.
-				else
-				{
-					for (int i = 0; i < value.Length; i++)
-					{
-						bool hasNextChar = i < value.Length - 1;
-						if (value[i] == '\"')
-						{
-							value = value.Remove(i, 1);
-						}
-						else if (hasNextChar && value[i] == '\\' && (value[i + 1] == '\\' || value[i + 1] == '\"'))
-						{
-							value = value.Remove(i, 1);
-						}
-					}
-
-					return value;
-				}
+				stringBuilder.Clear();
 			}
 		}
 

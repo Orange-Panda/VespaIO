@@ -57,24 +57,24 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			List<string> preAliasInputs = CommandInvocation.SplitStringBySemicolon(submitText);
+			List<string> preAliasInputs = Invocation.SplitStringBySemicolon(submitText);
 			foreach (string preAliasInput in preAliasInputs)
 			{
-				CommandInvocation.AliasOutcome aliasOutcome = CommandInvocation.SubstituteAliasForCommand(preAliasInput, out string aliasCommandOutput);
+				Invocation.AliasOutcome aliasOutcome = Invocation.SubstituteAliasForCommand(preAliasInput, out string aliasCommandOutput);
 				switch (aliasOutcome)
 				{
-					case CommandInvocation.AliasOutcome.NoChange:
+					case Invocation.AliasOutcome.NoChange:
 						ProcessCommand(preAliasInput);
 						break;
-					case CommandInvocation.AliasOutcome.AliasApplied:
+					case Invocation.AliasOutcome.AliasApplied:
 						Log($"<color=yellow>></color> {aliasCommandOutput}");
-						List<string> postAliasInputs = CommandInvocation.SplitStringBySemicolon(aliasCommandOutput);
+						List<string> postAliasInputs = Invocation.SplitStringBySemicolon(aliasCommandOutput);
 						foreach (string postAliasInput in postAliasInputs)
 						{
 							ProcessCommand(postAliasInput);
 						}
 						break;
-					case CommandInvocation.AliasOutcome.CommandConflict:
+					case Invocation.AliasOutcome.CommandConflict:
 						Log($"<color=orange>Alert:</color> There is an alias defined at \"{aliasCommandOutput}\" but there is already a command with the same name. The command is given priority so you are encouraged to remove your alias.");
 						ProcessCommand(preAliasInput);
 						break;
@@ -144,7 +144,7 @@ namespace LMirman.VespaIO
 			try
 			{
 				// Preprocess for alias command
-				List<string> splitInput = SplitIntoArgs(input);
+				List<string> splitInput = Invocation.GetWordsFromString(input);
 				commandName = splitInput[0].ToLower();
 				List<Argument> foundArgs = new List<Argument>();
 				for (int i = 1; i < splitInput.Count; i++)
@@ -164,122 +164,6 @@ namespace LMirman.VespaIO
 				commandName = null;
 				longString = null;
 				return false;
-			}
-		}
-
-		[Obsolete]
-		private static string ReplaceAlias(string input)
-		{
-			input = input.TrimStart(' ');
-			bool inQuote = false;
-			int escapeCount = 0;
-			int substringLength = 0;
-			for (int i = 0; i < input.Length; i++)
-			{
-				if (input[i] == ' ' && !inQuote)
-				{
-					break;
-				}
-				
-				// If we encounter an unescaped quote mark, toggle quote mode.
-				if (input[i] == '"' && escapeCount % 2 == 0)
-				{
-					inQuote = !inQuote;
-				}
-
-				escapeCount = input[i] == '\\' ? escapeCount + 1 : 0;
-				substringLength++;
-			}
-
-			string substring = input.Substring(0, substringLength).ToLower();
-			if (substring.Length > 0 && Aliases.TryGetAlias(substring, out string aliasValue))
-			{
-				if (Commands.ContainsCommand(substring))
-				{
-					Log($"<color=orange>Alert:</color> There is an alias defined at \"{substring}\" but there is already a command with the same name. The command is given priority so you are encouraged to remove your alias.");
-				}
-				else
-				{
-					string newValue = aliasValue + input.Substring(substringLength);
-					Log($"<color=yellow>></color> {newValue}");
-					return newValue;
-				}
-			}
-			return input;
-		}
-
-		private static List<string> SplitIntoArgs(string input)
-		{
-			List<string> splitInput = new List<string>();
-			bool inQuote = false;
-			bool hasEscapedQuote = false;
-			int escapeCount = 0;
-			int substringStart = 0;
-			int substringLength = 0;
-			for (int i = 0; i < input.Length; i++)
-			{
-				// If we encounter an unescaped quote mark, toggle quote mode.
-				if (input[i] == '"' && escapeCount % 2 == 0)
-				{
-					inQuote = !inQuote;
-				}
-				else if (input[i] == '"' && escapeCount % 2 == 1)
-				{
-					hasEscapedQuote = true;
-				}
-
-				// If we encounter a space and are not in quote mode, begin a new split.
-				if (input[i] == ' ' && !inQuote)
-				{
-					if (substringLength > 0)
-					{
-						splitInput.Add(GetSubstring());
-					}
-					substringStart = i + 1;
-					substringLength = 0;
-					hasEscapedQuote = false;
-					continue;
-				}
-
-				escapeCount = input[i] == '\\' ? escapeCount + 1 : 0;
-				substringLength++;
-			}
-
-			// Add the last command input
-			if (substringLength > 0)
-			{
-				splitInput.Add(GetSubstring());
-			}
-
-			return splitInput;
-
-			string GetSubstring()
-			{
-				string value = input.Substring(substringStart, substringLength);
-				if (!value.Contains("\"")) // There were no quote characters so we don't have to remove them.
-				{
-					return value.Replace("\\\\", "\\");
-				}
-				if (!hasEscapedQuote) // There we no unescaped quotes so we can easily just remove them all without checking for escape characters
-				{
-					return value.Replace("\"", string.Empty).Replace("\\\\", "\\");
-				}
-				else // The worst case scenario: There are some escaped quotes that we have to manually parse.
-				{
-					for (int i = 0; i < value.Length; i++)
-					{
-						bool hasNextChar = i < value.Length - 1;
-						if (value[i] == '\"')
-						{
-							value = value.Remove(i, 1);
-						}
-						else if (hasNextChar && value[i] == '\\' && (value[i + 1] == '\\' || value[i + 1] == '\"'))
-						{
-							value = value.Remove(i, 1);
-						}
-					}
-					return value;
-				}
 			}
 		}
 

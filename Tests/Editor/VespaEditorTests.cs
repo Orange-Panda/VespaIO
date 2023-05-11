@@ -22,7 +22,7 @@ namespace LMirman.VespaIO.Editor.Tests
 		[TestCase("echo \\;", "echo ;")]
 		public void Vespa_SplitStringBySemicolon(string input, string expected)
 		{
-			string actual = CommandInvocation.SplitStringBySemicolon(input)[0];
+			string actual = Invocation.SplitStringBySemicolon(input)[0];
 			Assert.AreEqual(actual, expected);
 		}
 	}
