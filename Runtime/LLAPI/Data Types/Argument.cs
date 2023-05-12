@@ -69,7 +69,6 @@ namespace LMirman.VespaIO
 			}
 			else
 			{
-				DevConsole.Log($"<color=red>Error:</color> Command arguments of type \"{type}\" are unsupported.");
 				return false;
 			}
 		}
@@ -98,7 +97,6 @@ namespace LMirman.VespaIO
 			}
 			else
 			{
-				DevConsole.Log($"<color=red>Error:</color> Command arguments of type \"{type}\" are unsupported.");
 				return false;
 			}
 		}

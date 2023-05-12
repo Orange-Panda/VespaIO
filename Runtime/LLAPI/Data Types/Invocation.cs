@@ -35,7 +35,8 @@ namespace LMirman.VespaIO
 		/// At this stage semicolons are handled as a standard character since this is a single command.
 		/// </remarks>
 		/// <param name="input">The text that was input for command invocation</param>
-		public Invocation(string input)
+		/// <param name="commandSet">The command set to search for a target command for invocation.</param>
+		public Invocation(string input, CommandSet commandSet)
 		{
 			try
 			{
@@ -64,7 +65,7 @@ namespace LMirman.VespaIO
 				ArgumentList.Clear();
 
 				// See if there is a valid command for this invocation
-				if (!Commands.TryGetCommand(inputKey, out command))
+				if (!commandSet.TryGetCommand(inputKey, out command))
 				{
 					validState = ValidState.ErrorNoCommandFound;
 					return;
@@ -86,7 +87,7 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		public InvokeResult RunInvocation(out Exception exception)
+		public InvokeResult RunInvocation(Console console, out Exception exception)
 		{
 			try
 			{
@@ -95,12 +96,17 @@ namespace LMirman.VespaIO
 				{
 					return InvokeResult.ErrorInvocationWasInvalid;
 				}
-				else if (command.Cheat && !DevConsole.CheatsEnabled)
+				else if (!console.Enabled)
+				{
+					return InvokeResult.ErrorConsoleInactive;
+				}
+				else if (command.Cheat && !console.CheatsEnabled)
 				{
 					return InvokeResult.ErrorRequiresCheats;
 				}
 				else
 				{
+					//TODO: Eventually there should be support for an "invisible" Console parameter so the DevConsole doesn't have to be explicitly referenced.
 					methodInfo.Invoke(null, methodParameters);
 					return InvokeResult.Success;
 				}
@@ -108,10 +114,13 @@ namespace LMirman.VespaIO
 			catch (Exception e)
 			{
 				exception = e.InnerException ?? e;
-				return InvokeResult.Exception;
+				return InvokeResult.ErrorException;
 			}
 		}
 
+		/// <summary>
+		/// Communicates if an <see cref="Invocation"/> object is valid and, if not, why it is invalid.
+		/// </summary>
 		public enum ValidState
 		{
 			/// <summary>
@@ -140,12 +149,33 @@ namespace LMirman.VespaIO
 			ErrorNoMethodForParameters
 		}
 
+		/// <summary>
+		/// Communicates the outcome of <see cref="Invocation.RunInvocation"/>.
+		/// </summary>
 		public enum InvokeResult
 		{
-			Exception,
+			/// <summary>
+			/// The invocation was run successful. 
+			/// </summary>
 			Success,
+			/// <summary>
+			/// The invocation failed due to an exception occuring.
+			/// </summary>
+			ErrorException,
+			/// <summary>
+			/// The invocation failed due to the <see cref="Invocation"/> object being in an invalid state.
+			/// </summary>
+			/// <seealso cref="ValidState"/>
+			/// <seealso cref="Invocation.validState"/>
 			ErrorInvocationWasInvalid,
-			ErrorRequiresCheats
+			/// <summary>
+			/// The invocation failed due to the associated command requiring cheats enabled, but the running console did not have adequate permission.
+			/// </summary>
+			ErrorRequiresCheats,
+			/// <summary>
+			/// The invocation failed due to the console invoking this command being inactive.
+			/// </summary>
+			ErrorConsoleInactive
 		}
 	}
 }

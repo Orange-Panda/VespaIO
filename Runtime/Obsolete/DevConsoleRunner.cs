@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -34,7 +33,7 @@ namespace LMirman.VespaIO
 
 		private void OnEnable()
 		{
-			DevConsole.OutputUpdate += DeveloperConsole_HistoryUpdate;
+			DevConsole.console.OutputUpdate += DeveloperConsole_HistoryUpdate;
 			recentCommandIndex = -1;
 			inputText.onValueChanged.AddListener(InputText_OnValueChanged);
 			canvasScaler.scaleFactor = ConsoleSettings.Config.consoleScale;
@@ -42,7 +41,7 @@ namespace LMirman.VespaIO
 
 		private void OnDisable()
 		{
-			DevConsole.OutputUpdate -= DeveloperConsole_HistoryUpdate;
+			DevConsole.console.OutputUpdate -= DeveloperConsole_HistoryUpdate;
 			inputText.onValueChanged.RemoveListener(InputText_OnValueChanged);
 		}
 
@@ -95,7 +94,7 @@ namespace LMirman.VespaIO
 			UpdateAutofillPreview();
 			UpdateAutofillInput();
 
-			if ((DevConsole.ConsoleActive || !DevConsole.ConsoleEnabled) && exitKey)
+			if ((DevConsole.ConsoleActive || !DevConsole.console.Enabled) && exitKey)
 			{
 				SetConsoleState(false);
 			}
@@ -111,7 +110,7 @@ namespace LMirman.VespaIO
 
 			if (historyDirty)
 			{
-				history.text = DevConsole.Output.ToString();
+				history.text = DevConsole.console.Output.ToString();
 				historyDirty = false;
 			}
 		}
@@ -205,7 +204,7 @@ namespace LMirman.VespaIO
 		private static string FindNextFill(string searchString, List<string> excludeList)
 		{
 			searchString = searchString.ToLower();
-			foreach (KeyValuePair<string, string> pair in Aliases.AllAliases)
+			foreach (KeyValuePair<string, string> pair in Aliases.aliasSet.AllAliases)
 			{
 				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key))
 				{
@@ -215,7 +214,7 @@ namespace LMirman.VespaIO
 
 			foreach (KeyValuePair<string, Command> pair in Commands.AllDefinitions)
 			{
-				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.CheatsEnabled && !(Application.isEditor && ConsoleSettings.Config.editorAutoEnableCheats));
+				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.console.CheatsEnabled && !(Application.isEditor && ConsoleSettings.Config.editorAutoEnableCheats));
 				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key) && !hidden)
 				{
 					return pair.Value.Key;
@@ -260,7 +259,7 @@ namespace LMirman.VespaIO
 					historyInputTime -= 0.15f;
 				}
 
-				if (Input.GetKeyUp(stopKeyCode) || recentCommandIndex == -1 || recentCommandIndex == DevConsole.RecentCommands.Count - 1)
+				if (Input.GetKeyUp(stopKeyCode) || recentCommandIndex == -1 || recentCommandIndex == DevConsole.console.recentInputs.Count - 1)
 				{
 					historyInput = HistoryInput.None;
 					historyInputTime = 0;
@@ -270,14 +269,14 @@ namespace LMirman.VespaIO
 
 		private void SetRecentCommandInput(int direction)
 		{
-			recentCommandIndex = Mathf.Clamp(recentCommandIndex + direction, -1, DevConsole.RecentCommands.Count - 1);
-			if (recentCommandIndex == -1 || DevConsole.RecentCommands.Count <= 0)
+			recentCommandIndex = Mathf.Clamp(recentCommandIndex + direction, -1, DevConsole.console.recentInputs.Count - 1);
+			if (recentCommandIndex == -1 || DevConsole.console.recentInputs.Count <= 0)
 			{
 				inputText.SetTextWithoutNotify(string.Empty);
 			}
 			else
 			{
-				LinkedListNode<string> current = DevConsole.RecentCommands.First;
+				LinkedListNode<string> current = DevConsole.console.recentInputs.First;
 				for (int i = 0; i < recentCommandIndex; i++)
 				{
 					current = current.Next;
@@ -340,7 +339,7 @@ namespace LMirman.VespaIO
 				// Clear no event system warning if present since one is present now.
 				if (hasNoEventSystem)
 				{
-					DevConsole.Clear();
+					DevConsole.console.Clear();
 					DevConsole.PrintWelcome();
 					hasNoEventSystem = false;
 				}
@@ -348,8 +347,8 @@ namespace LMirman.VespaIO
 #if UNITY_EDITOR
 			else
 			{
-				DevConsole.Clear();
-				DevConsole.Log("<color=red>ERROR:</color> No event system present in scene. The developer console cannot function without this.");
+				DevConsole.console.Clear();
+				DevConsole.Log("No event system present in scene. The developer console cannot function without this.", Console.LogStyling.Error);
 				DevConsole.Log("Add an event system by right clicking in the scene Hierarchy > UI > Event System.");
 				hasNoEventSystem = true;
 			}
@@ -362,7 +361,7 @@ namespace LMirman.VespaIO
 			{
 				inputText.SetTextWithoutNotify(string.Empty);
 				DevConsole.Log("> " + submitText);
-				DevConsole.ProcessInput(submitText);
+				DevConsole.console.RunInput(submitText);
 				EventSystem.current.SetSelectedGameObject(inputText.gameObject);
 				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
 				recentCommandIndex = -1;

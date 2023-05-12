@@ -37,7 +37,7 @@ namespace LMirman.VespaIO
 		/// Takes a raw input string and substitutes an alias command at the beginning with its alias definition
 		/// </summary>
 		/// <returns>The input string after having the alias replaced with its definition</returns>
-		public static AliasOutcome SubstituteAliasForCommand(string input, out string output)
+		public static AliasOutcome SubstituteAliasForCommand(string input, CommandSet commandSet, AliasSet aliasSet, out string output)
 		{
 			int substringLength = 0;
 			foreach (char inputChar in input)
@@ -51,12 +51,12 @@ namespace LMirman.VespaIO
 			}
 
 			string substring = input.Substring(0, substringLength).CleanseKey();
-			if (string.IsNullOrWhiteSpace(substring) || !Aliases.TryGetAlias(substring, out string aliasValue))
+			if (string.IsNullOrWhiteSpace(substring) || !aliasSet.TryGetAlias(substring, out string aliasValue))
 			{
 				output = input;
 				return AliasOutcome.NoChange;
 			}
-			else if (Commands.ContainsCommand(substring))
+			else if (commandSet.ContainsCommand(substring))
 			{
 				output = substring;
 				return AliasOutcome.CommandConflict;

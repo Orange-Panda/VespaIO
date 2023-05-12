@@ -29,7 +29,7 @@ namespace LMirman.VespaIO
 		[StaticCommand("clear", Name = "Clear Console History", Description = "Clears the entire console history including this command's execution. Usage is recommended when the history grows too large or the application freezes when logging occurs.", ManualPriority = 80)]
 		public static void Clear()
 		{
-			DevConsole.Clear();
+			DevConsole.console.Clear();
 		}
 
 		[StaticCommand("scene", Name = "Change Scene", Description = "Changes the scene to the scene name provided by the user", Cheat = true)]
@@ -54,14 +54,13 @@ namespace LMirman.VespaIO
 		[StaticCommand("cheats", Name = "Enable Cheats", Description = "Enable cheats for this play session.")]
 		public static void EnableCheats(string value = "")
 		{
-			if (DevConsole.CheatsEnabled)
+			if (DevConsole.console.CheatsEnabled)
 			{
-				DevConsole.Log("Cheats are already enabled! Cheats can't be disabled on this save slot.");
+				DevConsole.Log("Cheats are already enabled! Cheats can't be disabled on this save slot.", Console.LogStyling.Notice);
 			}
 			else if (Application.isEditor || value == "enable")
 			{
-				DevConsole.Log("Cheats have been enabled!");
-				DevConsole.CheatsEnabled = true;
+				DevConsole.console.EnableCheats();
 			}
 			else
 			{
@@ -92,9 +91,9 @@ namespace LMirman.VespaIO
 		public static void Help(string query)
 		{
 			string value = query.ToLower();
-			if (Commands.TryGetCommand(value, out Command command))
+			if (Commands.commandSet.TryGetCommand(value, out Command command))
 			{
-				DevConsole.LogCommandHelp(command);
+				DevConsole.Log(command.Guide);
 			}
 			else
 			{
@@ -188,7 +187,7 @@ namespace LMirman.VespaIO
 
 		private static bool IsCommandHidden(Command command)
 		{
-			return command.Hidden || (command.Cheat && !DevConsole.CheatsEnabled);
+			return command.Hidden || (command.Cheat && !DevConsole.console.CheatsEnabled);
 		}
 		#endregion
 
@@ -200,12 +199,13 @@ namespace LMirman.VespaIO
 			alias = alias.CleanseKey();
 			if (alias.Length == 0 || value.Length == 0)
 			{
-				DevConsole.Log("<color=red>Error:</color> Your alias or value was empty.");
+				DevConsole.Log("Your alias or value was empty.", Console.LogStyling.Notice);
 				return;
 			}
 
 			// Set alias
-			bool isNewAlias = Aliases.SetAlias(alias, value);
+			bool isNewAlias = Aliases.aliasSet.SetAlias(alias, value);
+			Aliases.WriteToDisk();
 			DevConsole.Log(isNewAlias
 				? $"<color=green>+</color> Added alias \"{alias}\" to represent \"{value}\""
 				: $"<color=yellow>*</color> Modified alias \"{alias}\" to represent \"{value}\"");
@@ -214,14 +214,19 @@ namespace LMirman.VespaIO
 		[StaticCommand("alias_delete", Name = "Delete Alias", Description = "Delete a particular alias definition")]
 		public static void DeleteAlias(string alias)
 		{
-			bool didRemoveAlias = Aliases.RemoveAlias(alias);
+			bool didRemoveAlias = Aliases.aliasSet.RemoveAlias(alias);
+			if (didRemoveAlias)
+			{
+				Aliases.WriteToDisk();
+			}
+			
 			DevConsole.Log(didRemoveAlias ? $"<color=red>-</color> Removed alias \"{alias}\"." : $"<color=yellow>Warning:</color> Tried to remove alias \"{alias}\" but no such alias was found.");
 		}
 
 		[StaticCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
 		public static void ResetAllAliasesWarning()
 		{
-			DevConsole.Log("<color=orange>Alert:</color> This will remove <b>ALL</b> alias definitions!\nTo confirm alias reset please enter the following command: \"alias_reset_all CONFIRM\"");
+			DevConsole.Log("This will remove <b>ALL</b> alias definitions!\nTo confirm alias reset please enter the following command: \"alias_reset_all CONFIRM\"", Console.LogStyling.Notice);
 		}
 
 		[StaticCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
@@ -229,7 +234,7 @@ namespace LMirman.VespaIO
 		{
 			if (confirmation == "CONFIRM")
 			{
-				Aliases.ResetAliases();
+				Aliases.ResetAliasesAndFile();
 				DevConsole.Log("<color=red>-</color> All aliases have been removed!");
 			}
 			else
@@ -241,8 +246,8 @@ namespace LMirman.VespaIO
 		[StaticCommand("alias_view", Name = "View Alias", Description = "View the definition for a particular alias")]
 		public static void ViewAlias(string alias)
 		{
-			DevConsole.Log(Aliases.TryGetAlias(alias, out string definition)
-				? $"\"{alias}\" -> \"{Aliases.GetAlias(definition)}\""
+			DevConsole.Log(Aliases.aliasSet.TryGetAlias(alias, out string definition)
+				? $"\"{alias}\" -> \"{Aliases.aliasSet.GetAlias(definition)}\""
 				: $"<color=red>Error:</color> Tried to view alias \"{alias}\" but no such alias was found.");
 		}
 
@@ -251,7 +256,7 @@ namespace LMirman.VespaIO
 		{
 			string lowFilter = filter.CleanseKey();
 			DevConsole.Log($"--- Aliases Containing \"{filter}\" ---");
-			foreach (KeyValuePair<string, string> alias in Aliases.AllAliases)
+			foreach (KeyValuePair<string, string> alias in Aliases.aliasSet.AllAliases)
 			{
 				if (alias.Key.Contains(lowFilter) || alias.Value.ToLower().Contains(lowFilter))
 				{
@@ -264,12 +269,12 @@ namespace LMirman.VespaIO
 		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
 		public static void ListAlias(int pageNum = 0)
 		{
-			int pageCount = Mathf.Max(Mathf.CeilToInt((float)Aliases.AliasCount / AliasPageLength), 1);
+			int pageCount = Mathf.Max(Mathf.CeilToInt((float)Aliases.aliasSet.AliasCount / AliasPageLength), 1);
 			pageNum = Mathf.Clamp(pageNum, 1, pageCount);
 			int remaining = AliasPageLength;
 			int ignore = (pageNum - 1) * AliasPageLength;
 			DevConsole.Log($"--- Aliases {pageNum}/{pageCount} ---");
-			foreach (KeyValuePair<string, string> alias in Aliases.AllAliases)
+			foreach (KeyValuePair<string, string> alias in Aliases.aliasSet.AllAliases)
 			{
 				//Stop if we have print out enough commands
 				if (remaining <= 0)

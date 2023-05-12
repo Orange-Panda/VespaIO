@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using UnityEngine;
 
 namespace LMirman.VespaIO
 {
@@ -14,53 +15,8 @@ namespace LMirman.VespaIO
 	/// The 'best' method will be chosen from the set of methods when invoked based on the parameters provided.
 	/// </remarks>
 	[PublicAPI]
-	public class Command
+	public class Command : ICommandProperties
 	{
-		// ReSharper disable once InconsistentNaming
-		/// <summary>
-		/// The key that points to this command in console.
-		/// </summary>
-		/// <remarks>
-		/// This is immutable to avoid conflicts with other command definitions and to preserve key definitions in command dictionaries that contain this entry.
-		/// </remarks>
-		public readonly string Key;
-
-		/// <summary>
-		/// Used to build the guide property without as much garbage collection overhead as string concatenation
-		/// </summary>
-		private static readonly StringBuilder GuideBuilder = new StringBuilder();
-
-		/// <summary>
-		/// The name or title of the command in plain english.
-		/// </summary>
-		/// <example>
-		/// Good command titles might be:<br/>
-		/// - "Print Debug Information"<br/>
-		/// - "Grant Item to Player"<br/>
-		/// - "Play Mission"<br/>
-		/// - "Teleport Player to Location"
-		/// </example>
-		/// <remarks>
-		/// Not to be confused with <see cref="Key"/> which is the unique identifier for this command.<br/>
-		/// If no name is provided by a command definition will default to the first method name found.
-		/// </remarks>
-		public string Name { get; private set; }
-
-		/// <summary>
-		/// The description of the command.
-		/// </summary>
-		/// <example>
-		/// Good command descriptions might be:<br/>
-		/// - "Prints information about the system playing the game"<br/>
-		/// - "Immediately grant an item to the player inventory"<br/>
-		/// - "Set and play a particular mission for the loaded save file"<br/>
-		/// - "Immediately teleport the player to the provided location"<br/>
-		/// </example>
-		/// <remarks>
-		/// Should be a brief explanation of the functionality of the command without any detailed explanation of functionality.
-		/// </remarks>
-		public string Description { get; private set; } = string.Empty;
-		
 		/// <summary>
 		/// The guide to usages of the command explaining to the user how parameters should be provided to the command.
 		/// </summary>
@@ -72,118 +28,83 @@ namespace LMirman.VespaIO
 		/// It is not currently possible to override the way by which the guide is generated.
 		/// </remarks>
 		public string Guide { get; private set; }
-		
-		/// <summary>
-		/// If this command is a cheat command.<br/><br/>
-		/// When true the command will be omitted from help and autofill while cheats are not enabled in addition to be unable to be executed in the console until enabling cheats.
-		/// </summary>
-		/// <example>
-		/// Cheat commands are likely to be commands that execute gameplay impacting code not otherwise accessible such as:<br/>
-		/// - A command that gives the player free items, experience, or other progression mechanics<br/>
-		/// - A command that manipulates the player functionality<br/>
-		/// - A command that creates targets or objects in the scene
-		/// </example>
-		/// <remarks>
-		/// If any single method of the command is marked as a cheat the entire command is considered a cheat.
-		/// Thus, it is not possible to provide non-cheat functionality to a cheat command directly and must be added as a separate command.
-		/// <br/><br/>
-		/// Note: Due to the nature of code still existing on the end user's system there is no absolute guarantee that the user never executes Cheat commands out of context.<br/>
-		/// Therefore it is recommended that you consider the following:<br/>
-		/// - Only write commands that you consider acceptable for users to execute (i.e avoid including commands that cheat on a server)<br/>
-		/// - Implement platform directives such as `#if UNITY_EDITOR` around cheat commands you never want accessible to the end user<br/>
-		/// - Understand the fact that players may modify code, especially JIT code, and execute code that you don't intend them to.<br/>
-		/// </remarks>
+
+		// ReSharper disable once InconsistentNaming
+		/// <inheritdoc cref="ICommandProperties.Key"/>
+		public string Key => key;
+		/// <inheritdoc cref="ICommandProperties.Name"/>
+		public string Name { get; private set; }
+		/// <inheritdoc cref="ICommandProperties.Description"/>
+		public string Description { get; private set; } = string.Empty;
+		/// <inheritdoc cref="ICommandProperties.Cheat"/>
 		public bool Cheat { get; private set; }
-		
-		/// <summary>
-		/// If this command should be accessible by auto-fill and help functionalities of the console.<br/><br/>
-		/// When true will be omitted from being displayed in such sections.
-		/// </summary>
-		/// <example>
-		/// Hidden commands are likely to be commands that are easter eggs or commands that are not useful to the end user such as:<br/>
-		/// - A command that changes the skin of the UI for fun without any gameplay consequences<br/>
-		/// - A command that plays a sound effect<br/>
-		/// - A command that shows a secret message to the user
-		/// </example>
-		/// <remarks>
-		/// Hidden commands do not have any impact on boundaries on their execution what so over.
-		/// Assuming the user knows the command exists they can execute it as if it were not hidden.
-		/// </remarks>
+		/// <inheritdoc cref="ICommandProperties.Hidden"/>
 		public bool Hidden { get; private set; }
-		
-		/// <summary>
-		/// The priority of this command relative to other commands.
-		/// The higher this value, the earlier this command should appear in a sorted list of commands.
-		/// </summary>
-		/// <example>
-		/// Commands that are particularly useful or frequently used may justify a high priority such as:<br/>
-		/// - A cheat that teleports the player<br/>
-		/// - A cheat that grants items<br/>
-		/// - A command that sets volume<br/>
-		/// Commands that are niche or rarely useful may justify a negative priority such as:<br/>
-		/// - A cheat that only works in a specific level<br/>
-		/// - A command that sets an internal value that only developers or testers would care about<br/>
-		/// </example>
-		/// <remarks>
-		/// Native commands will only ever use the 0 to 127 inclusive range.
-		/// If you want your commands to always sort before or after native commands consider these values.
-		/// </remarks>
+		/// <inheritdoc cref="ICommandProperties.ManualPriority"/>
 		public int ManualPriority { get; private set; }
 
+		/// <summary>
+		/// Used to build the guide property without as much garbage collection overhead as string concatenation
+		/// </summary>
+		private static readonly StringBuilder GuideBuilder = new StringBuilder();
+
 		private readonly List<MethodInfo> methods = new List<MethodInfo>();
-		
+		private readonly string key;
+
 		/// <summary>
 		/// True if there is at least one method defined for this command. False if there are none.
 		/// </summary>
 		public bool HasMethod => methods.Count > 0;
 
 		/// <summary>
-		/// Create a brand new command by defining attributes from a <paramref name="attribute"/> and adding method <paramref name="method"/>.
+		/// Create a brand new command by defining attributes from a <paramref name="properties"/> and adding method <paramref name="method"/>.
 		/// </summary>
-		/// <param name="attribute">The properties that define this command such as title, description, and cheat properties.</param>
+		/// <param name="properties">The properties that define this command such as title, description, and cheat properties.</param>
 		/// <param name="method">The first method to be added to this command definition.</param>
-		public Command(StaticCommandAttribute attribute, MethodInfo method)
+		public Command(ICommandProperties properties, MethodInfo method)
 		{
-			Key = attribute.Key.CleanseKey();
-			SetAttributeProperties(attribute);
+			key = properties.Key.CleanseKey();
+			SetAttributeProperties(properties);
 			AddMethod(method);
 		}
 
 		/// <summary>
-		/// Set attributes for this command based on a provided <see cref="StaticCommandAttribute"/>.
+		/// Set attributes for this command based on a provided <see cref="ICommandProperties"/>.
 		/// </summary>
 		/// <remarks>
-		/// - Will be rejected if the key does not match <see cref="Key"/><br/>
+		/// - Will be rejected if the key does not match <see cref="key"/><br/>
 		/// - Will overwrite <see cref="Name"/> if not null or white space<br/>
 		/// - Will overwrite <see cref="Description"/> if not null or white space<br/>
 		/// - Will permanently mark this command as <see cref="Hidden"/> and/or <see cref="Cheat"/> if either are set (independently).<br/>
 		/// - Will overwrite <see cref="ManualPriority"/> if it is non-zero
 		/// </remarks>
-		/// <param name="attribute">The properties that define this command such as title, description, and cheat properties.</param>
-		public void SetAttributeProperties(StaticCommandAttribute attribute)
+		/// <param name="properties">The properties that define this command such as title, description, and cheat properties.</param>
+		public void SetAttributeProperties(ICommandProperties properties)
 		{
-			string attributeKey = attribute.Key.CleanseKey();
-			if (attributeKey != Key)
+			string attributeKey = properties.Key.CleanseKey();
+			if (attributeKey != key)
 			{
-				DevConsole.Log($"Error: There was an attempt to add a method to command \"{Key}\" but the key \"{attributeKey}\" did not match");
+#if UNITY_EDITOR
+				Debug.LogWarning($"There was an attempt to add a method to command \"{key}\" but the key \"{attributeKey}\" did not match");
+#endif
 				return;
 			}
 
 			// Set attribute name
-			if (!string.IsNullOrWhiteSpace(attribute.Name))
+			if (!string.IsNullOrWhiteSpace(properties.Name))
 			{
-				Name = attribute.Name;
+				Name = properties.Name;
 			}
 
 			// Set description
-			if (!string.IsNullOrWhiteSpace(attribute.Description))
+			if (!string.IsNullOrWhiteSpace(properties.Description))
 			{
-				Description = attribute.Description;
+				Description = properties.Description;
 			}
 
-			Cheat = Cheat | attribute.Cheat;
-			Hidden = Hidden | attribute.Hidden;
-			ManualPriority = attribute.ManualPriority != default ? attribute.ManualPriority : ManualPriority;
+			Cheat = Cheat | properties.Cheat;
+			Hidden = Hidden | properties.Hidden;
+			ManualPriority = properties.ManualPriority != default ? properties.ManualPriority : ManualPriority;
 		}
 
 		/// <summary>
@@ -328,11 +249,13 @@ namespace LMirman.VespaIO
 		private void UpdateGuide()
 		{
 			GuideBuilder.Clear();
+			GuideBuilder.AppendFormat("{0} - \"{1}\"\n", key, Name);
+			
 			for (int i = 0; i < methods.Count; i++)
 			{
 				MethodInfo method = methods[i];
 				GuideBuilder.Append("Usage: ");
-				GuideBuilder.Append(Key);
+				GuideBuilder.Append(key);
 
 				ParameterInfo[] parameters = method.GetParameters();
 				foreach (ParameterInfo parameter in parameters)
