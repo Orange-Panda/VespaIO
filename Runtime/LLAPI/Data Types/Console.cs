@@ -30,10 +30,10 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public event Action OutputUpdate = delegate { };
 
+		public readonly LinkedList<string> recentInputs = new LinkedList<string>();
 		protected readonly StringBuilder output = new StringBuilder(16384);
 		protected string outputLog = string.Empty;
 		protected bool outputDirty;
-		public readonly LinkedList<string> recentInputs = new LinkedList<string>();
 
 		#region Core
 		public void RunInput(string input)
@@ -221,7 +221,7 @@ namespace LMirman.VespaIO
 						break;
 					}
 				}
-				
+
 				output.Remove(0, removeIndex);
 			}
 		}
@@ -259,6 +259,54 @@ namespace LMirman.VespaIO
 				default:
 					throw new ArgumentOutOfRangeException(nameof(logStyling), logStyling, null);
 			}
+		}
+
+		private static readonly AutoFillValue DefaultAutoFill = new AutoFillValue("help", "help", new Word(string.Empty, false, 0));
+
+		public AutoFillValue GetAutoFillValue(string input, HashSet<string> autofillExclusions)
+		{
+			if (string.IsNullOrEmpty(input))
+			{
+				return DefaultAutoFill;
+			}
+
+			List<string> commands = VespaFunctions.SplitStringBySemicolon(input);
+			if (commands.Count == 0)
+			{
+				return DefaultAutoFill;
+			}
+
+			string lastCommand = commands[commands.Count - 1];
+			List<Word> words = VespaFunctions.GetWordsFromString(lastCommand, false);
+
+			// Don't autofill help on commands that aren't the first one.
+			if (words.Count == 0)
+			{
+				return null;
+			}
+			// Autofill commands or aliases on first word
+			else if (words.Count == 1 && !lastCommand.EndsWith(" "))
+			{
+				Word word = words[0];
+				string inputCommand = word.text.CleanseKey();
+				foreach (string aliasKey in AliasSet.Keys)
+				{
+					if (aliasKey.StartsWith(inputCommand) && !autofillExclusions.Contains(aliasKey))
+					{
+						return new AutoFillValue(aliasKey, aliasKey.Substring(inputCommand.Length), word);
+					}
+				}
+
+				foreach (string commandKey in CommandSet.Keys)
+				{
+					if (commandKey.StartsWith(inputCommand) && !autofillExclusions.Contains(commandKey))
+					{
+						return new AutoFillValue(commandKey, commandKey.Substring(inputCommand.Length), word);
+					}
+				}
+			}
+
+			return null;
 		}
 
 		public enum LogStyling

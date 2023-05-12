@@ -21,6 +21,9 @@ namespace LMirman.VespaIO
 		/// </remarks>
 		public IEnumerable<KeyValuePair<string, string>> AllAliases => lookup;
 
+		public Dictionary<string, string>.KeyCollection Keys => lookup.Keys;
+		public Dictionary<string, string>.ValueCollection Values => lookup.Values;
+
 		/// <summary>
 		/// Check if there is an alias definition for a particular key.
 		/// </summary>

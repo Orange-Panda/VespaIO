@@ -157,9 +157,11 @@ namespace LMirman.VespaIO
 			bool inQuote = false;
 			bool isLiteral = false;
 			int escapeCount = 0;
+			int wordStartIndex = 0;
 			WordStringBuilder.Clear();
-			foreach (char inputChar in input)
+			for (int i = 0; i < input.Length; i++)
 			{
+				char inputChar = input[i];
 				bool isEscaped = escapeCount % 2 == 1;
 
 				// If we encounter an unescaped quote mark, toggle quote mode.
@@ -173,6 +175,8 @@ namespace LMirman.VespaIO
 				if (inputChar == ' ' && !inQuote)
 				{
 					SubmitWord();
+					// The next word begins on the next character.
+					wordStartIndex = i + 1;
 					escapeCount = 0;
 					continue;
 				}
@@ -192,7 +196,7 @@ namespace LMirman.VespaIO
 				string substring = WordStringBuilder.ToString();
 				if (isLiteral || !string.IsNullOrWhiteSpace(substring))
 				{
-					output.Add(new Word(substring, isLiteral));
+					output.Add(new Word(substring, isLiteral, wordStartIndex));
 				}
 
 				isLiteral = false;

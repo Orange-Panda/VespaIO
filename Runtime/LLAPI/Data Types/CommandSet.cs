@@ -12,6 +12,9 @@ namespace LMirman.VespaIO
 		private readonly CommandPropertiesComparer commandPropertiesComparer = new CommandPropertiesComparer();
 		private bool sortDirty;
 
+		/// <summary>
+		/// Returns a sorted list of commands based on its <see cref="Command.ManualPriority"/>
+		/// </summary>
 		public IEnumerable<Command> AllCommands
 		{
 			get
@@ -23,14 +26,18 @@ namespace LMirman.VespaIO
 					{
 						commands.Add(command);
 					}
+
 					commands.Sort(commandPropertiesComparer);
 				}
-				
+
 				return commands;
 			}
 		}
 		public IEnumerable<KeyValuePair<string, Command>> AllDefinitions => lookup;
-		
+
+		public Dictionary<string, Command>.KeyCollection Keys => lookup.Keys;
+		public Dictionary<string, Command>.ValueCollection Values => lookup.Values;
+
 		public bool ContainsCommand(string key)
 		{
 			return lookup.ContainsKey(key.CleanseKey());

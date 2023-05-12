@@ -31,10 +31,9 @@ namespace LMirman.VespaIO
 		private int recentCommandIndex = -1;
 		private HistoryInput historyInput;
 		private float historyInputTime;
-		private string lastInput;
+		private string virtualText;
 		private string lastAutofillPreview;
-
-		private readonly List<string> recentFillSearch = new List<string>();
+		protected readonly HashSet<string> autofillExclusions = new HashSet<string>();
 
 		private void OnEnable()
 		{
@@ -58,8 +57,8 @@ namespace LMirman.VespaIO
 		private void InputText_OnValueChanged(string value)
 		{
 			recentCommandIndex = -1;
-			recentFillSearch.Clear();
-			lastInput = value;
+			autofillExclusions.Clear();
+			virtualText = value;
 		}
 
 		private void Start()
@@ -145,15 +144,10 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			string foundCommand = FindNextFill(inputText.text, recentFillSearch);
-			if (string.IsNullOrWhiteSpace(inputText.text))
+			AutoFillValue foundCommand = DevConsole.console.GetAutoFillValue(virtualText, autofillExclusions);
+			if (foundCommand != null)
 			{
-				autofillPreview.text = "help";
-				autofillPreview.enabled = true;
-			}
-			else if (foundCommand != null)
-			{
-				autofillPreview.text = foundCommand;
+				autofillPreview.text = foundCommand.newWord;
 				autofillPreview.enabled = true;
 			}
 			else
@@ -172,55 +166,26 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			if (string.IsNullOrWhiteSpace(lastInput))
+			AutoFillValue autoFillValue = DevConsole.console.GetAutoFillValue(virtualText, autofillExclusions);
+			if (autoFillValue != null)
 			{
-				inputText.SetTextWithoutNotify("help ");
-				inputText.caretPosition = inputText.text.Length;
+				InsertAutofill(autoFillValue);
 				return;
 			}
 
-			// This clears the recent fill list in case the user has tab through all options
-			if (FindNextFill(lastInput, recentFillSearch) == null)
+			autofillExclusions.Clear();
+			autoFillValue = DevConsole.console.GetAutoFillValue(virtualText, autofillExclusions);
+			if (autoFillValue != null)
 			{
-				recentFillSearch.Clear();
-			}
-
-			string foundFill = FindNextFill(lastInput, recentFillSearch);
-			if (foundFill != null)
-			{
-				recentFillSearch.Add(foundFill);
-				inputText.SetTextWithoutNotify(foundFill + ' ');
-				inputText.caretPosition = inputText.text.Length;
+				InsertAutofill(autoFillValue);
 			}
 		}
 
-		/// <summary>
-		/// Find the first alias or command that starts with the <paramref name="searchString"/>.
-		/// </summary>
-		/// <param name="searchString">The text to search with.</param>
-		/// <param name="excludeList">Fills that are exempt, usually because they have already been filled in the console.</param>
-		/// <returns>The first alias then command that starts with the search text or null if none is found.</returns>
-		private static string FindNextFill(string searchString, List<string> excludeList)
+		private void InsertAutofill(AutoFillValue autoFillValue)
 		{
-			searchString = searchString.ToLower();
-			foreach (KeyValuePair<string, string> pair in Aliases.aliasSet.AllAliases)
-			{
-				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key))
-				{
-					return pair.Key;
-				}
-			}
-
-			foreach (KeyValuePair<string, Command> pair in Commands.commandSet.AllDefinitions)
-			{
-				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.console.CheatsEnabled && !(Application.isEditor && NativeSettings.Config.editorAutoEnableCheats));
-				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key) && !hidden)
-				{
-					return pair.Value.Key;
-				}
-			}
-
-			return null;
+			autofillExclusions.Add(autoFillValue.newWord);
+			inputText.SetTextWithoutNotify($"{virtualText.Substring(0, autoFillValue.originalWord.wordStartIndex)}{autoFillValue.newWord} ");
+			inputText.caretPosition = inputText.text.Length;
 		}
 
 		private void UpdateTraverseCommandHistory()
@@ -271,6 +236,7 @@ namespace LMirman.VespaIO
 			recentCommandIndex = Mathf.Clamp(recentCommandIndex + direction, -1, DevConsole.console.recentInputs.Count - 1);
 			if (recentCommandIndex == -1 || DevConsole.console.recentInputs.Count <= 0)
 			{
+				virtualText = string.Empty;
 				inputText.SetTextWithoutNotify(string.Empty);
 			}
 			else
@@ -281,6 +247,7 @@ namespace LMirman.VespaIO
 					current = current.Next;
 				}
 
+				virtualText = current.Value;
 				inputText.SetTextWithoutNotify(current.Value);
 			}
 
@@ -324,6 +291,7 @@ namespace LMirman.VespaIO
 			canvas.enabled = value;
 			inputText.enabled = value;
 			inputText.SetTextWithoutNotify(string.Empty);
+			virtualText = string.Empty;
 			recentCommandIndex = -1;
 			if (EventSystem.current != null)
 			{
@@ -363,13 +331,13 @@ namespace LMirman.VespaIO
 			if (DevConsole.ConsoleActive && !string.IsNullOrWhiteSpace(submitText))
 			{
 				inputText.SetTextWithoutNotify(string.Empty);
+				virtualText = string.Empty;
 				DevConsole.Log("> " + submitText);
 				DevConsole.console.RunInput(submitText);
 				EventSystem.current.SetSelectedGameObject(inputText.gameObject);
 				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
 				recentCommandIndex = -1;
-				lastInput = string.Empty;
-				recentFillSearch.Clear();
+				autofillExclusions.Clear();
 			}
 		}
 
