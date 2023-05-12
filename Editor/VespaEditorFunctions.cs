@@ -8,7 +8,7 @@ namespace LMirman.VespaIO.Editor
 		[MenuItem("Tools/Vespa IO/Select Console Settings")]
 		public static void SelectSettings()
 		{
-			ConsoleSettingsFile file = Resources.Load<ConsoleSettingsFile>(ConsoleSettings.SettingsPath);
+			ConsoleSettingsFile file = Resources.Load<ConsoleSettingsFile>(NativeSettings.SettingsPath);
 			if (file == null)
 			{
 				ConsoleSettingsFile asset = ScriptableObject.CreateInstance<ConsoleSettingsFile>();
@@ -20,10 +20,10 @@ namespace LMirman.VespaIO.Editor
 				{
 					AssetDatabase.CreateFolder("Assets/Resources", "VespaIO");
 				}
-				AssetDatabase.CreateAsset(asset, $"Assets/Resources/{ConsoleSettings.SettingsPath}.asset");
+				AssetDatabase.CreateAsset(asset, $"Assets/Resources/{NativeSettings.SettingsPath}.asset");
 				AssetDatabase.SaveAssets();
 				AssetDatabase.Refresh();
-				file = Resources.Load<ConsoleSettingsFile>(ConsoleSettings.SettingsPath);
+				file = Resources.Load<ConsoleSettingsFile>(NativeSettings.SettingsPath);
 			}
 			Selection.activeObject = file;
 		}

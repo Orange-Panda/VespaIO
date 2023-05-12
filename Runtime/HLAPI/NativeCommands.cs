@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 namespace LMirman.VespaIO
 {
 	/// <summary>
-	/// Default commands that are built into the console and are useful in any project.
+	/// Default commands that are built into the console and are useful in practically any project.
 	/// </summary>
 	public static class NativeCommands
 	{
@@ -26,7 +26,10 @@ namespace LMirman.VespaIO
 			DevConsole.PrintWelcome();
 		}
 
-		[StaticCommand("clear", Name = "Clear Console History", Description = "Clears the entire console history including this command's execution. Usage is recommended when the history grows too large or the application freezes when logging occurs.", ManualPriority = 80)]
+		[StaticCommand("clear", Name = "Clear Console History",
+			Description =
+				"Clears the entire console history including this command's execution. Usage is recommended when the history grows too large or the application freezes when logging occurs.",
+			ManualPriority = 80)]
 		public static void Clear()
 		{
 			DevConsole.console.Clear();
@@ -65,12 +68,12 @@ namespace LMirman.VespaIO
 			else
 			{
 				DevConsole.Log("WARNING: By enabling cheats you understand and agree to the following:\n" +
-					"<color=red>- You will be unable to disable cheats for this session.\n" +
-					"- Cheat commands will compromise the standard gameplay experience.\n" +
-					"- The game may become unstable with the use of cheat commands.\n" +
-					"- Some features like saving and achievements may be disabled.\n\n</color>" +
-					"It is highly recommended you don't enable cheats unless you are comfortable with the unstable experience.\n" +
-					"If you are still sure you would like to enable cheat commands please enter the following command <b>exactly</b> as follows: cheats enable");
+							   "<color=red>- You will be unable to disable cheats for this session.\n" +
+							   "- Cheat commands will compromise the standard gameplay experience.\n" +
+							   "- The game may become unstable with the use of cheat commands.\n" +
+							   "- Some features like saving and achievements may be disabled.\n\n</color>" +
+							   "It is highly recommended you don't enable cheats unless you are comfortable with the unstable experience.\n" +
+							   "If you are still sure you would like to enable cheat commands please enter the following command <b>exactly</b> as follows: cheats enable");
 			}
 		}
 
@@ -104,7 +107,7 @@ namespace LMirman.VespaIO
 		private static int CountPages()
 		{
 			List<Command> commands = new List<Command>();
-			foreach (Command command in Commands.AllCommands)
+			foreach (Command command in Commands.commandSet.AllCommands)
 			{
 				if (!commands.Contains(command) && !IsCommandHidden(command))
 				{
@@ -123,7 +126,7 @@ namespace LMirman.VespaIO
 			int remaining = HelpPageLength;
 			int ignore = (page - 1) * HelpPageLength;
 			DevConsole.Log($"========== Help: Page {page}/{pageCount} ==========");
-			foreach (Command command in Commands.AllCommands)
+			foreach (Command command in Commands.commandSet.AllCommands)
 			{
 				//Stop if we have print out enough commands
 				if (remaining <= 0)
@@ -145,6 +148,7 @@ namespace LMirman.VespaIO
 					}
 				}
 			}
+
 			DevConsole.Log($"========== END OF PAGE {page}/{pageCount} ==========");
 			DevConsole.Log("========== Use \"help {page #}\" for more ==========");
 		}
@@ -153,7 +157,7 @@ namespace LMirman.VespaIO
 		{
 			DevConsole.Log($"========== Commands Containing \"{key}\" ==========");
 			List<Command> commands = new List<Command>();
-			foreach (Command command in Commands.AllCommands)
+			foreach (Command command in Commands.commandSet.AllCommands)
 			{
 				if ((command.Key.Contains(key) || command.Name.ToLower().Contains(key)) && !commands.Contains(command))
 				{
@@ -174,14 +178,7 @@ namespace LMirman.VespaIO
 				return false;
 			}
 
-			if (!string.IsNullOrWhiteSpace(command.Description))
-			{
-				DevConsole.Log($"= {command.Name} \"{command.Key}\"\n  - {command.Description}");
-			}
-			else
-			{
-				DevConsole.Log($"= {command.Name} \"{command.Key}\"");
-			}
+			DevConsole.Log(!string.IsNullOrWhiteSpace(command.Description) ? $"= {command.Name} \"{command.Key}\"\n  - {command.Description}" : $"= {command.Name} \"{command.Key}\"");
 			return true;
 		}
 
@@ -214,13 +211,16 @@ namespace LMirman.VespaIO
 		[StaticCommand("alias_delete", Name = "Delete Alias", Description = "Delete a particular alias definition")]
 		public static void DeleteAlias(string alias)
 		{
+			alias = alias.CleanseKey();
 			bool didRemoveAlias = Aliases.aliasSet.RemoveAlias(alias);
 			if (didRemoveAlias)
 			{
 				Aliases.WriteToDisk();
 			}
-			
-			DevConsole.Log(didRemoveAlias ? $"<color=red>-</color> Removed alias \"{alias}\"." : $"<color=yellow>Warning:</color> Tried to remove alias \"{alias}\" but no such alias was found.");
+
+			DevConsole.Log(didRemoveAlias
+				? $"<color=red>-</color> Removed alias \"{alias}\"."
+				: $"<color=yellow>Warning:</color> Tried to remove alias \"{alias}\" but no such alias was found.");
 		}
 
 		[StaticCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
@@ -243,22 +243,24 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		[StaticCommand("alias")]
 		[StaticCommand("alias_view", Name = "View Alias", Description = "View the definition for a particular alias")]
 		public static void ViewAlias(string alias)
 		{
+			alias = alias.CleanseKey();
 			DevConsole.Log(Aliases.aliasSet.TryGetAlias(alias, out string definition)
-				? $"\"{alias}\" -> \"{Aliases.aliasSet.GetAlias(definition)}\""
+				? $"\"{alias}\" -> \"{definition}\""
 				: $"<color=red>Error:</color> Tried to view alias \"{alias}\" but no such alias was found.");
 		}
 
 		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
 		public static void ListAlias(string filter)
 		{
-			string lowFilter = filter.CleanseKey();
+			filter = filter.CleanseKey();
 			DevConsole.Log($"--- Aliases Containing \"{filter}\" ---");
 			foreach (KeyValuePair<string, string> alias in Aliases.aliasSet.AllAliases)
 			{
-				if (alias.Key.Contains(lowFilter) || alias.Value.ToLower().Contains(lowFilter))
+				if (alias.Key.Contains(filter) || alias.Value.ToLower().Contains(filter))
 				{
 					DevConsole.Log($"'{alias.Key}'  ->  '{alias.Value}'");
 				}
@@ -266,6 +268,7 @@ namespace LMirman.VespaIO
 		}
 
 		private const int AliasPageLength = 10;
+
 		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
 		public static void ListAlias(int pageNum = 0)
 		{
@@ -292,6 +295,7 @@ namespace LMirman.VespaIO
 					remaining--;
 				}
 			}
+
 			DevConsole.Log($"--- END OF PAGE {pageNum}/{pageCount} ---");
 			DevConsole.Log("--- Use \"alias_list {page #}\" for more ---");
 		}

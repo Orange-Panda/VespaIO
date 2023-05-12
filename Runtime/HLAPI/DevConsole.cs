@@ -23,26 +23,26 @@ namespace LMirman.VespaIO
 			PrintWelcome();
 
 #if UNITY_EDITOR
-			console.Enabled = ConsoleSettings.Config.defaultConsoleEnableEditor;
+			console.Enabled = NativeSettings.Config.defaultConsoleEnableEditor;
 #else
 			console.Enabled = ConsoleSettings.Config.defaultConsoleEnableStandalone;
 #endif
 
-			if (ConsoleSettings.Config.preloadType == PreloadType.RuntimeStart)
+			if (NativeSettings.Config.preloadType == PreloadType.RuntimeStart)
 			{
 				Commands.PreloadLookup();
 			}
 
-			if (ConsoleSettings.Config.instantiateConsoleOnLoad)
+			if (NativeSettings.Config.instantiateConsoleOnLoad)
 			{
-				GameObject original = Resources.Load<GameObject>(ConsoleSettings.Config.consoleResourcePath);
+				GameObject original = Resources.Load<GameObject>(NativeSettings.Config.consoleResourcePath);
 				if (original != null)
 				{
 					Object.Instantiate(original, Vector3.zero, Quaternion.identity);
 				}
 				else
 				{
-					Debug.LogError($"Unable to instantiate console prefab from \"{ConsoleSettings.Config.consoleResourcePath}\". Please ensure that a prefab exists at this path.");
+					Debug.LogError($"Unable to instantiate console prefab from \"{NativeSettings.Config.consoleResourcePath}\". Please ensure that a prefab exists at this path.");
 				}
 			}
 		}
@@ -57,9 +57,9 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public static void PrintWelcome()
 		{
-			console.Log(ConsoleSettings.Config.welcomeText);
+			console.Log(NativeSettings.Config.welcomeText);
 
-			if (ConsoleSettings.Config.printMetadataOnWelcome)
+			if (NativeSettings.Config.printMetadataOnWelcome)
 			{
 				console.Log($"Version: {Application.version} {(Application.genuine ? "" : "[MODIFIED]")}\nUnity Version: {Application.unityVersion}\nPlatform: {Application.platform}");
 			}

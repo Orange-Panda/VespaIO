@@ -21,7 +21,7 @@ namespace LMirman.VespaIO
 		/// - "Teleport Player to Location"
 		/// </example>
 		/// <remarks>
-		/// Not to be confused with <see cref="key"/> which is the unique identifier for this command.<br/>
+		/// Not to be confused with <see cref="Key"/> which is the unique identifier for this command.<br/>
 		/// If no name is provided by a command definition will default to the first method name found.
 		/// </remarks>
 		public string Name { get; }

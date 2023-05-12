@@ -1,7 +1,9 @@
+using JetBrains.Annotations;
 using System.Collections.Generic;
 
 namespace LMirman.VespaIO
 {
+	[PublicAPI]
 	public class AliasSet
 	{
 		private readonly Dictionary<string, string> lookup = new Dictionary<string, string>();

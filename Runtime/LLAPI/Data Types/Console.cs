@@ -2,14 +2,14 @@ using JetBrains.Annotations;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine;
 
 namespace LMirman.VespaIO
 {
 	[PublicAPI]
 	public abstract class Console
 	{
-		private const int InputHistoryCapacity = 16;
+		protected int inputHistoryCapacity = 16;
+		protected int outputCapacity = 8192;
 		protected bool cheatsEnabled;
 
 		/// <summary>
@@ -29,7 +29,10 @@ namespace LMirman.VespaIO
 		/// Invoked when something is logged into the console output or if it is cleared.
 		/// </summary>
 		public event Action OutputUpdate = delegate { };
-		public readonly StringBuilder Output = new StringBuilder();
+
+		protected readonly StringBuilder output = new StringBuilder(16384);
+		protected string outputLog = string.Empty;
+		protected bool outputDirty;
 		public readonly LinkedList<string> recentInputs = new LinkedList<string>();
 
 		#region Core
@@ -147,7 +150,7 @@ namespace LMirman.VespaIO
 			}
 
 			// Restrict list to certain capacity
-			while (recentInputs.Count > InputHistoryCapacity)
+			while (recentInputs.Count > inputHistoryCapacity)
 			{
 				recentInputs.RemoveLast();
 			}
@@ -156,8 +159,8 @@ namespace LMirman.VespaIO
 
 		public void Clear()
 		{
-			Output.Clear();
-			OutputUpdate.Invoke();
+			output.Clear();
+			NotifyOutputUpdate();
 		}
 
 		/// <summary>
@@ -171,9 +174,9 @@ namespace LMirman.VespaIO
 		/// <param name="logStyling">The styling, if any, to apply to the logged line.</param>
 		public void Log(string message, LogStyling logStyling = LogStyling.Plain)
 		{
-			Output.AppendLine();
-			Output.Append(StyleText(message, logStyling));
-			OutputUpdate.Invoke();
+			output.AppendLine();
+			output.Append(StyleText(message, logStyling));
+			NotifyOutputUpdate();
 		}
 
 		/// <summary>
@@ -187,7 +190,45 @@ namespace LMirman.VespaIO
 		/// <param name="logStyling">The styling, if any, to apply to the logged line.</param>
 		public void LogAppend(string message, LogStyling logStyling = LogStyling.Plain)
 		{
-			Output.Append(StyleText(message, logStyling));
+			output.Append(StyleText(message, logStyling));
+			NotifyOutputUpdate();
+		}
+
+		public string GetOutputLog()
+		{
+			if (outputDirty)
+			{
+				TrimToCapacity();
+				outputLog = output.ToString();
+				outputDirty = false;
+			}
+
+			return outputLog;
+		}
+
+		private void TrimToCapacity()
+		{
+			if (output.Length > outputCapacity)
+			{
+				// Starting from the initial place we want to remove capacity, find the end of its line and trim output to there.
+				int removeIndex = output.Length - outputCapacity;
+				while (removeIndex < output.Length)
+				{
+					char c = output[removeIndex];
+					removeIndex++;
+					if (c == '\n' || c == '\r')
+					{
+						break;
+					}
+				}
+				
+				output.Remove(0, removeIndex);
+			}
+		}
+
+		protected void NotifyOutputUpdate()
+		{
+			outputDirty = true;
 			OutputUpdate.Invoke();
 		}
 

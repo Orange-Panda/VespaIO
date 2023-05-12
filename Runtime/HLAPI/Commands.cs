@@ -1,4 +1,5 @@
-﻿using System;
+﻿using JetBrains.Annotations;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -6,12 +7,16 @@ using System.Text.RegularExpressions;
 
 namespace LMirman.VespaIO
 {
+	/// <summary>
+	/// Stores and saves a global <see cref="CommandSet"/> for usage in the <see cref="NativeConsole"/>.
+	/// </summary>
+	[PublicAPI]
 	public static class Commands
 	{
-		public static readonly CommandSet commandSet = new CommandSet();
+		private static readonly Regex StandardSearchRegex = new Regex("^(?!unity|system|mscorlib|mono|log4net|newtonsoft|nunit|jetbrains)", RegexOptions.IgnoreCase);
+		private static readonly Regex ExhaustiveSearchRegex = new Regex(".+");
 
-		public static IEnumerable<Command> AllCommands => commandSet.AllCommands;
-		public static IEnumerable<KeyValuePair<string, Command>> AllDefinitions => commandSet.AllDefinitions;
+		public static readonly CommandSet commandSet = new CommandSet();
 
 		static Commands()
 		{
@@ -26,24 +31,28 @@ namespace LMirman.VespaIO
 		/// <summary>
 		/// Build the command set for all command attributes in the project by searching for <see cref="StaticCommandAttribute"/>.
 		/// </summary>
-		private static void BuildCommandSet()
+		/// <remarks>
+		/// This is an expensive operation and should be used sparingly.
+		/// Usually desirable if you have modified code at runtime or mutated the <see cref="commandSet"/> and wish to revert to the initial state.
+		/// </remarks>
+		public static void BuildCommandSet()
 		{
 			Stopwatch stopwatch = new Stopwatch();
 			stopwatch.Start();
 			commandSet.UnregisterAllCommands();
-			Assembly[] assemblies = GetAssembliesFromDomain(AppDomain.CurrentDomain, ConsoleSettings.Config.assemblyFilter);
-			List<Type> classes = GetClassesFromAssemblies(assemblies);
-			List<StaticCommand> staticCommands = GetStaticCommandsFromClasses(classes);
-			foreach (StaticCommand staticCommand in staticCommands)
+			Assembly[] assemblies = VespaReflection.GetAssembliesFromDomain(AppDomain.CurrentDomain, GetRegexFilter(NativeSettings.Config.assemblyFilter));
+			List<Type> classes = VespaReflection.GetClassesFromAssemblies(assemblies);
+			List<CommandMethod> staticCommands = VespaReflection.GetCommandMethodFromClasses<StaticCommandAttribute>(classes, VespaReflection.StaticMethodBindingFlags);
+			foreach (CommandMethod staticCommand in staticCommands)
 			{
 				commandSet.RegisterCommand(staticCommand.properties, staticCommand.methodInfo);
 			}
 
 #if UNITY_EDITOR // Only done in editor since the end user should not care about this message and not checking this dramatically improves performance.
-			if (ConsoleSettings.Config.warnForNonstaticMethods)
+			if (NativeSettings.Config.warnForNonstaticMethods)
 			{
-				List<StaticCommand> instancedMethods = GetInstanceCommandsFromClasses(classes);
-				foreach (StaticCommand staticCommand in instancedMethods)
+				List<CommandMethod> instancedMethods = VespaReflection.GetCommandMethodFromClasses<StaticCommandAttribute>(classes, VespaReflection.InstanceMethodBindingFlags);
+				foreach (CommandMethod staticCommand in instancedMethods)
 				{
 					string message =
 						$"<color=red>ERROR:</color> Static command attribute with key {staticCommand.properties.Key} is a applied to non-static method {staticCommand.methodInfo.Name}, which is unsupported. The method will not be added to the console.";
@@ -55,112 +64,16 @@ namespace LMirman.VespaIO
 			DevConsole.Log($"<color=green>Command generation completed in {stopwatch.Elapsed.TotalSeconds:F3}s</color>");
 		}
 
-		#region Reflection
-		private static readonly Regex SystemAssemblyRegex = new Regex("^(?!unity|system|mscorlib|mono|log4net|newtonsoft|nunit|jetbrains)", RegexOptions.IgnoreCase);
-
-		/// <summary>
-		/// Get an array of all assemblies that the user would like to check for commands within.
-		/// </summary>
-		private static Assembly[] GetAssembliesFromDomain(AppDomain domain, AssemblyFilter assemblyFilter)
+		private static Regex GetRegexFilter(AssemblyFilter assemblyFilter)
 		{
-			Assembly[] assemblies = domain.GetAssemblies();
 			switch (assemblyFilter)
 			{
 				case AssemblyFilter.Standard:
-					List<Assembly> validAssemblies = new List<Assembly>();
-					foreach (Assembly assembly in assemblies)
-					{
-						if (assembly != null && SystemAssemblyRegex.IsMatch(assembly.FullName))
-						{
-							validAssemblies.Add(assembly);
-						}
-					}
-
-					return validAssemblies.ToArray();
+					return StandardSearchRegex;
 				case AssemblyFilter.Exhaustive:
-					return assemblies;
+					return ExhaustiveSearchRegex;
 				default:
-					throw new ArgumentOutOfRangeException();
-			}
-		}
-
-		/// <summary>
-		/// Get a list of all classes within an array of assemblies
-		/// </summary>
-		private static List<Type> GetClassesFromAssemblies(Assembly[] assemblies)
-		{
-			List<Type> classes = new List<Type>();
-			foreach (Assembly assembly in assemblies)
-			{
-				Type[] types = assembly.GetTypes();
-				foreach (Type type in types)
-				{
-					if (type.IsClass)
-					{
-						classes.Add(type);
-					}
-				}
-			}
-
-			return classes;
-		}
-
-		private const BindingFlags StaticMethodBindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
-
-		private static List<StaticCommand> GetStaticCommandsFromClasses(List<Type> classes)
-		{
-			List<StaticCommand> commands = new List<StaticCommand>();
-			foreach (Type type in classes)
-			{
-				foreach (MethodInfo method in type.GetMethods(StaticMethodBindingFlags))
-				{
-					object[] customAttributes = method.GetCustomAttributes(typeof(StaticCommandAttribute), false);
-					foreach (object customAttribute in customAttributes)
-					{
-						if (customAttribute is StaticCommandAttribute staticCommandAttribute)
-						{
-							commands.Add(new StaticCommand(staticCommandAttribute, method));
-						}
-					}
-				}
-			}
-
-			return commands;
-		}
-
-		private const BindingFlags InstanceMethodBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
-
-		private static List<StaticCommand> GetInstanceCommandsFromClasses(List<Type> classes)
-		{
-			List<StaticCommand> commands = new List<StaticCommand>();
-			foreach (Type type in classes)
-			{
-				foreach (MethodInfo method in type.GetMethods(InstanceMethodBindingFlags))
-				{
-					object[] customAttributes = method.GetCustomAttributes(typeof(StaticCommandAttribute), false);
-					foreach (object customAttribute in customAttributes)
-					{
-						if (customAttribute is StaticCommandAttribute attribute)
-						{
-							commands.Add(new StaticCommand(attribute, method));
-						}
-					}
-				}
-			}
-
-			return commands;
-		}
-		#endregion
-
-		private class StaticCommand
-		{
-			public readonly ICommandProperties properties;
-			public readonly MethodInfo methodInfo;
-
-			public StaticCommand(StaticCommandAttribute properties, MethodInfo methodInfo)
-			{
-				this.properties = properties;
-				this.methodInfo = methodInfo;
+					throw new ArgumentOutOfRangeException(nameof(assemblyFilter), assemblyFilter, null);
 			}
 		}
 

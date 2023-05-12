@@ -6,7 +6,7 @@ namespace LMirman.VespaIO
 		{
 #if UNITY_EDITOR
 			// Automatically enable cheats if configured to do so in the config, making quick debugging more convenient when enabled.
-			if (invocation.command.Cheat && !cheatsEnabled && ConsoleSettings.Config.editorAutoEnableCheats)
+			if (invocation.command.Cheat && !cheatsEnabled && NativeSettings.Config.editorAutoEnableCheats)
 			{
 				Log("<color=yellow>Cheats have automatically been enabled.</color>");
 				cheatsEnabled = true;
@@ -18,7 +18,7 @@ namespace LMirman.VespaIO
 
 		public void EnableCheats()
 		{
-			DevConsole.Log("Cheats have been enabled!", Console.LogStyling.Info);
+			DevConsole.Log("Cheats have been enabled!", LogStyling.Info);
 			cheatsEnabled = true;
 		}
 	}

@@ -8,14 +8,13 @@ using UnityEngine;
 namespace LMirman.VespaIO
 {
 	/// <summary>
-	/// Handles alias definitions for creating shortcuts for complicated commands in the <see cref="DevConsole"/>
+	/// Stores and saves a global <see cref="AliasSet"/> for usage in the <see cref="NativeConsole"/>.
 	/// </summary>
 	[PublicAPI]
 	public static class Aliases
 	{
 		private const string DirectoryName = "VespaIO";
 		private const string PrefsFileName = "aliases.json";
-		public static readonly AliasSet aliasSet = new AliasSet();
 
 		/// <summary>
 		/// The directory of the folder containing the alias preferences file.
@@ -26,6 +25,8 @@ namespace LMirman.VespaIO
 		/// The path to the alias preferences file.
 		/// </summary>
 		private static string DataPath => $"{DirectoryPath}/{PrefsFileName}";
+		
+		public static readonly AliasSet aliasSet = new AliasSet();
 
 		static Aliases()
 		{

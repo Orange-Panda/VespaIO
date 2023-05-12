@@ -12,31 +12,36 @@ namespace LMirman.VespaIO
 	public class DevConsoleRunner : MonoBehaviour
 	{
 		[Header("Component References")]
-		[SerializeField] private Canvas canvas;
-		[SerializeField] private CanvasScaler canvasScaler;
-		[SerializeField] private GameObject container;
-		[SerializeField] private TextMeshProUGUI history;
-		[SerializeField] private TMP_InputField inputText;
-		[SerializeField] private TMP_Text autofillPreview;
+		[SerializeField]
+		private Canvas canvas;
+		[SerializeField]
+		private CanvasScaler canvasScaler;
+		[SerializeField]
+		private GameObject container;
+		[SerializeField]
+		private TextMeshProUGUI history;
+		[SerializeField]
+		private TMP_InputField inputText;
+		[SerializeField]
+		private TMP_Text autofillPreview;
 
 		private bool historyDirty;
 		private bool hasNoEventSystem;
 		private GameObject previousSelectable;
 		private int recentCommandIndex = -1;
 		private HistoryInput historyInput;
-		private float historyInputTime = 0;
+		private float historyInputTime;
 		private string lastInput;
 		private string lastAutofillPreview;
 
-		internal static DevConsoleRunner Instance { get; private set; }
-		internal static List<string> recentFillSearch = new List<string>();
+		private readonly List<string> recentFillSearch = new List<string>();
 
 		private void OnEnable()
 		{
 			DevConsole.console.OutputUpdate += DeveloperConsole_HistoryUpdate;
 			recentCommandIndex = -1;
 			inputText.onValueChanged.AddListener(InputText_OnValueChanged);
-			canvasScaler.scaleFactor = ConsoleSettings.Config.consoleScale;
+			canvasScaler.scaleFactor = NativeSettings.Config.consoleScale;
 		}
 
 		private void OnDisable()
@@ -59,24 +64,17 @@ namespace LMirman.VespaIO
 
 		private void Start()
 		{
-			if (Instance != null)
-			{
-				Destroy(gameObject);
-				return;
-			}
-
-			if (ConsoleSettings.Config.preloadType == DevConsole.PreloadType.ConsoleStart)
+			if (NativeSettings.Config.preloadType == DevConsole.PreloadType.ConsoleStart)
 			{
 				Commands.PreloadLookup();
 			}
 
 			// Destroy the graphic raycaster if the console is never expected to utilize it
-			if (ConsoleSettings.Config.closeConsoleOnLeftClick && TryGetComponent(out GraphicRaycaster raycaster))
+			if (NativeSettings.Config.closeConsoleOnLeftClick && TryGetComponent(out GraphicRaycaster raycaster))
 			{
 				Destroy(raycaster);
 			}
 
-			Instance = this;
 			DontDestroyOnLoad(this);
 			SetConsoleState(false);
 			inputText.onSubmit.AddListener(OnSubmit);
@@ -85,7 +83,7 @@ namespace LMirman.VespaIO
 
 		private void Update()
 		{
-			ConsoleSettingsConfig config = ConsoleSettings.Config;
+			ConsoleSettingsConfig config = NativeSettings.Config;
 			bool shouldInput = DetermineShouldInput(config);
 			bool openKey = shouldInput && GetKeysDown(config.openConsoleKeycodes);
 			bool exitKey = shouldInput && DetermineShouldExit(config);
@@ -110,7 +108,7 @@ namespace LMirman.VespaIO
 
 			if (historyDirty)
 			{
-				history.text = DevConsole.console.Output.ToString();
+				history.text = DevConsole.console.GetOutputLog();
 				historyDirty = false;
 			}
 		}
@@ -163,6 +161,7 @@ namespace LMirman.VespaIO
 				autofillPreview.enabled = false;
 				autofillPreview.text = string.Empty;
 			}
+
 			lastAutofillPreview = inputText.text;
 		}
 
@@ -212,9 +211,9 @@ namespace LMirman.VespaIO
 				}
 			}
 
-			foreach (KeyValuePair<string, Command> pair in Commands.AllDefinitions)
+			foreach (KeyValuePair<string, Command> pair in Commands.commandSet.AllDefinitions)
 			{
-				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.console.CheatsEnabled && !(Application.isEditor && ConsoleSettings.Config.editorAutoEnableCheats));
+				bool hidden = pair.Value.Hidden || (pair.Value.Cheat && !DevConsole.console.CheatsEnabled && !(Application.isEditor && NativeSettings.Config.editorAutoEnableCheats));
 				if (pair.Key.StartsWith(searchString) && !excludeList.Contains(pair.Key) && !hidden)
 				{
 					return pair.Value.Key;
@@ -281,6 +280,7 @@ namespace LMirman.VespaIO
 				{
 					current = current.Next;
 				}
+
 				inputText.SetTextWithoutNotify(current.Value);
 			}
 
@@ -296,9 +296,10 @@ namespace LMirman.VespaIO
 					return true;
 				}
 			}
+
 			return false;
 		}
-		
+
 		private bool GetKeysDown(KeyCode[] keyCodes)
 		{
 			for (int i = 0; i < keyCodes.Length; i++)
@@ -308,6 +309,7 @@ namespace LMirman.VespaIO
 					return true;
 				}
 			}
+
 			return false;
 		}
 
@@ -318,6 +320,7 @@ namespace LMirman.VespaIO
 			{
 				container.SetActive(value);
 			}
+
 			canvas.enabled = value;
 			inputText.enabled = value;
 			inputText.SetTextWithoutNotify(string.Empty);
