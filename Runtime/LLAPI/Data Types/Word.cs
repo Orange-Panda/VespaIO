@@ -11,13 +11,16 @@ namespace LMirman.VespaIO
 		/// True when the <see cref="text"/> was formerly surround by quotations, meaning it should always be treated as a string.
 		/// </summary>
 		public readonly bool isLiteral;
-		public readonly int wordStartIndex;
+		/// <summary>
+		/// The starting index of this word relative to a statement.
+		/// </summary>
+		public readonly int startIndex;
 
-		public Word(string text, bool isLiteral, int wordStartIndex)
+		public Word(string text, bool isLiteral, int startIndex)
 		{
 			this.text = text;
 			this.isLiteral = isLiteral;
-			this.wordStartIndex = wordStartIndex;
+			this.startIndex = startIndex;
 		}
 	}
 }

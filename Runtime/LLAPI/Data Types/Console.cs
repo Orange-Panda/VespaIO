@@ -261,7 +261,7 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		private static readonly AutoFillValue DefaultAutoFill = new AutoFillValue("help", "help", new Word(string.Empty, false, 0));
+		private static readonly AutoFillValue DefaultAutoFill = new AutoFillValue("help", "help", 0);
 
 		public AutoFillValue GetAutoFillValue(string input, HashSet<string> autofillExclusions)
 		{
@@ -270,13 +270,18 @@ namespace LMirman.VespaIO
 				return DefaultAutoFill;
 			}
 
-			List<string> commands = VespaFunctions.SplitStringBySemicolon(input);
+			List<string> commands = VespaFunctions.SplitStringBySemicolon(input, true, true);
 			if (commands.Count == 0)
 			{
 				return DefaultAutoFill;
 			}
 
 			string lastCommand = commands[commands.Count - 1];
+			int commandStartIndex = 0;
+			for (int i = 0; i < commands.Count - 1; i++)
+			{
+				commandStartIndex += commands[i].Length;
+			}
 			List<Word> words = VespaFunctions.GetWordsFromString(lastCommand, false);
 
 			// Don't autofill help on commands that aren't the first one.
@@ -293,7 +298,7 @@ namespace LMirman.VespaIO
 				{
 					if (aliasKey.StartsWith(inputCommand) && !autofillExclusions.Contains(aliasKey))
 					{
-						return new AutoFillValue(aliasKey, aliasKey.Substring(inputCommand.Length), word);
+						return new AutoFillValue(aliasKey, aliasKey.Substring(inputCommand.Length), commandStartIndex + word.startIndex);
 					}
 				}
 
@@ -301,7 +306,7 @@ namespace LMirman.VespaIO
 				{
 					if (commandKey.StartsWith(inputCommand) && !autofillExclusions.Contains(commandKey))
 					{
-						return new AutoFillValue(commandKey, commandKey.Substring(inputCommand.Length), word);
+						return new AutoFillValue(commandKey, commandKey.Substring(inputCommand.Length), commandStartIndex + word.startIndex);
 					}
 				}
 			}

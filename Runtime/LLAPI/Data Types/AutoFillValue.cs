@@ -3,9 +3,9 @@ namespace LMirman.VespaIO
 	public class AutoFillValue
 	{
 		/// <summary>
-		/// The word that was originally present that is the target of autofill.
+		/// Unlike <see cref="Word.startIndex"/> this index is relative to the entire input, including other statements.
 		/// </summary>
-		public readonly Word originalWord;
+		public readonly int globalStartIndex;
 		/// <summary>
 		/// The full word that will be autofilled into the console
 		/// </summary>
@@ -21,11 +21,11 @@ namespace LMirman.VespaIO
 		/// </remarks>
 		public readonly string insertText;
 
-		public AutoFillValue(string newWord, string insertText, Word originalWord)
+		public AutoFillValue(string newWord, string insertText, int globalStartIndex)
 		{
 			this.newWord = newWord;
 			this.insertText = insertText;
-			this.originalWord = originalWord;
+			this.globalStartIndex = globalStartIndex;
 		}
 	}
 }

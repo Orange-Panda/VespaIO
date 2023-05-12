@@ -184,7 +184,7 @@ namespace LMirman.VespaIO
 		private void InsertAutofill(AutoFillValue autoFillValue)
 		{
 			autofillExclusions.Add(autoFillValue.newWord);
-			inputText.SetTextWithoutNotify($"{virtualText.Substring(0, autoFillValue.originalWord.wordStartIndex)}{autoFillValue.newWord} ");
+			inputText.SetTextWithoutNotify($"{virtualText.Substring(0, autoFillValue.globalStartIndex)}{autoFillValue.newWord} ");
 			inputText.caretPosition = inputText.text.Length;
 		}
 
