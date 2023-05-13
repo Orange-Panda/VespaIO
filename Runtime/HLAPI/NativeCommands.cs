@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -35,6 +37,7 @@ namespace LMirman.VespaIO
 			DevConsole.console.Clear();
 		}
 
+		#region Scene
 		[StaticCommand("scene", Name = "Change Scene", Description = "Changes the scene to the scene name provided by the user", Cheat = true)]
 		public static void Scene()
 		{
@@ -48,12 +51,39 @@ namespace LMirman.VespaIO
 			SceneManager.LoadScene(target);
 		}
 
+		private static bool hasBuiltSceneNameList;
+		private static readonly List<string> SceneNameList = new List<string>();
+
 		[CommandAutofill("scene")]
-		// TODO: Autofill from scenes in the build target
 		private static AutofillValue GetSceneAutofillValue(AutofillBuilder autofillBuilder)
 		{
-			return autofillBuilder.CreateOverwriteAutofill("SampleScene");
+			if (!hasBuiltSceneNameList)
+			{
+				SceneNameList.Clear();
+				int sceneCount = SceneManager.sceneCountInBuildSettings;
+				for (int i = 0; i < sceneCount; i++)
+				{
+					SceneNameList.Add(Path.GetFileNameWithoutExtension(SceneUtility.GetScenePathByBuildIndex(i)));
+				}
+			}
+			
+			if (autofillBuilder.RelevantWordIndex != 1)
+			{
+				return null;
+			}
+
+			string relevantWord = autofillBuilder.GetRelevantWordText();
+			foreach (string sceneName in SceneNameList)
+			{
+				if (sceneName.StartsWith(relevantWord, StringComparison.CurrentCultureIgnoreCase) && !autofillBuilder.Exclusions.Contains(sceneName))
+				{
+					return autofillBuilder.CreateCompletionAutofill(sceneName);
+				}
+			}
+
+			return null;
 		}
+		#endregion
 
 		[StaticCommand("echo", Name = "Echo", Description = "Repeat the input back to the console.")]
 		public static void Echo(string message)

@@ -289,7 +289,7 @@ namespace LMirman.VespaIO
 				commandStartIndex += commands[i].Length;
 			}
 
-			List<Word> words = VespaFunctions.GetWordsFromString(lastCommand, false);
+			List<Word> words = VespaFunctions.GetWordsFromString(lastCommand);
 
 			// Don't autofill help on commands that aren't the first one.
 			if (words.Count == 0)

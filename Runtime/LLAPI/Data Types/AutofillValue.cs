@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace LMirman.VespaIO
 {
 	public class AutofillValue
@@ -23,6 +25,7 @@ namespace LMirman.VespaIO
 
 		public AutofillValue(string newWord, int oldWordLength, int globalStartIndex)
 		{
+			newWord = MakeLiteralIfNecessary(newWord);
 			this.newWord = newWord;
 			insertText = newWord.Substring(oldWordLength);
 			this.globalStartIndex = globalStartIndex;
@@ -30,6 +33,7 @@ namespace LMirman.VespaIO
 
 		public AutofillValue(string newWord, string insertText, int globalStartIndex)
 		{
+			newWord = MakeLiteralIfNecessary(newWord);
 			this.newWord = newWord;
 			this.insertText = insertText;
 			this.globalStartIndex = globalStartIndex;
@@ -37,9 +41,23 @@ namespace LMirman.VespaIO
 
 		public AutofillValue(string newWord, int globalStartIndex)
 		{
+			newWord = MakeLiteralIfNecessary(newWord);
 			this.newWord = newWord;
 			this.globalStartIndex = globalStartIndex;
 			insertText = string.Empty;
+		}
+
+		[Pure]
+		private string MakeLiteralIfNecessary(string word)
+		{
+			if (!word.Contains(" ") || word.StartsWith("\""))
+			{
+				return word;
+			}
+			else
+			{
+				return $"\"{word}\"";
+			}
 		}
 	}
 }
