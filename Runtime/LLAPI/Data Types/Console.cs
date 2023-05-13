@@ -6,7 +6,7 @@ using System.Text;
 namespace LMirman.VespaIO
 {
 	[PublicAPI]
-	public abstract class Console
+	public class Console
 	{
 		protected int inputHistoryCapacity = 16;
 		protected int outputCapacity = 8192;
@@ -30,14 +30,19 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public event Action OutputUpdate = delegate { };
 
-		public readonly LinkedList<string> recentInputs = new LinkedList<string>();
+		public readonly List<string> recentInputs = new List<string>(32);
 		protected readonly StringBuilder output = new StringBuilder(16384);
 		protected string outputLog = string.Empty;
 		protected bool outputDirty;
 
 		#region Core
-		public void RunInput(string input)
+		public void RunInput(string input, bool silent = false)
 		{
+			if (!silent)
+			{
+				Log($"> {input}");
+			}
+
 			RecordInputInHistory(input);
 
 			if (string.IsNullOrWhiteSpace(input))
@@ -144,15 +149,15 @@ namespace LMirman.VespaIO
 		private void RecordInputInHistory(string submitText)
 		{
 			// Add the command to history if it was not the most recent command sent.
-			if (!string.IsNullOrWhiteSpace(submitText) && (recentInputs.Count <= 0 || !recentInputs.First.Value.Equals(submitText)))
+			if (!string.IsNullOrWhiteSpace(submitText) && (recentInputs.Count <= 0 || !recentInputs[0].Equals(submitText)))
 			{
-				recentInputs.AddFirst(submitText);
+				recentInputs.Insert(0, submitText);
 			}
 
 			// Restrict list to certain capacity
-			while (recentInputs.Count > inputHistoryCapacity)
+			while (recentInputs.Count > Math.Max(inputHistoryCapacity, 0))
 			{
-				recentInputs.RemoveLast();
+				recentInputs.RemoveAt(recentInputs.Count - 1);
 			}
 		}
 		#endregion
@@ -282,6 +287,7 @@ namespace LMirman.VespaIO
 			{
 				commandStartIndex += commands[i].Length;
 			}
+
 			List<Word> words = VespaFunctions.GetWordsFromString(lastCommand, false);
 
 			// Don't autofill help on commands that aren't the first one.
@@ -312,6 +318,23 @@ namespace LMirman.VespaIO
 			}
 
 			return null;
+		}
+
+		/// <summary>
+		/// Get input text that was recently invoked with <see cref="RunInvocation"/>.
+		/// </summary>
+		/// <param name="index">The index of the input in <see cref="recentInputs"/> list. The larger this value the older the input was ran.</param>
+		[NotNull]
+		public string GetRecentInputByIndex(int index)
+		{
+			if (index <= -1 || recentInputs.Count == 0)
+			{
+				return string.Empty;
+			}
+			else
+			{
+				return recentInputs[Math.Min(index, recentInputs.Count - 1)];
+			}
 		}
 
 		public enum LogStyling

@@ -20,12 +20,28 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 	- If for some reason this behavior is undesirable you can revert to the old behavior
 - Enforcement of key definition rules are now much more strict that before so invalid command or alias keys may register differently to the console.
 	- As a reminder: Keys should only use chracters from a-z, 0-9, and the `_` character.
-    - Any keys that violate these rules will be converted to a valid key by going to lower case, replacing spaces with the `_`, and removing other invalid characters.
+	- Any keys that violate these rules will be converted to a valid key by going to lower case, replacing spaces with the `_`, and removing other invalid characters.
+- The text parser for console input has been completely rewritten. It follows very similiar syntax to before but may have slightly different behavior from before including:
+	- By default a command is defined by space separated words. Each word will be translated into a method parameter later.
+	- If you would like to include a space in a parameter begin a quote using the "" character. 
+		- Only the first set of quotations will be removed
+		- You can escape the quote character using `\"` to ignore this behavior
+	- You can begin a new command definition by using the semicolon character
+		- You can escape the semicolon character using `\;` to ignore this behavior
+		- Semicolons within quotes will not begin a new command.
+- Almost the entirety of the internal architecture has been rewritten so there are some behavioral differences that are so sweeping it will be overwhelming to throw them at you here.
+	- Simply put a good chunk of the codebase has been separated into a `LLAPI` that handles a lot of the heavy lifiting of the asset
+		- If you do not plan to extend console functionality you should amost never need to interact with `LLAPI`, but it is available if that is of interest to your project.
+	- Some code and assets that were related to the default implementation such as `DevConsoleRunner` have been moved to `Samples`
+		- If you were using any 1.X version you likely need to import this default console implementation.
+	- The rest of the codebase lies within the `HLAPI` which provides the same intuitive console implemntation from 1.X versions
+		- Because of this separation of `LLAPI` from `HLAPI` it is possible to import exclusively the `LLAPI` if you want to write your own console implementation.
 
 ### Added
 
 - Added public methods to the `Aliases` class to add support for adding, removing, and viewing alias definitions within your own code.
 - Added public methods to the `Commands` class to add support for adding, removing, and viewing command definitions within your own code.
+- Added various types to more clearly communicate command syntax and invocations.
 - Added the JetBrain's `[MeansImplicitUse]` attribute to the `[StaticCommand]` attribute to automatically supress `Method never used` intellisense warnings for commands.
 - Added support for `Argument[]` commands which can dynamically handle any amount of parameters.
 	- If this parameter is ever present it will *always* be invoked.

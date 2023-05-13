@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using JetBrains.Annotations;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,6 +9,7 @@ namespace LMirman.VespaIO
 	/// <summary>
 	/// Default MonoBehaviour that interacts with the <see cref="DevConsole"/> and manages the canvas state of the UI.
 	/// </summary>
+	[PublicAPI]
 	public class DevConsoleRunner : MonoBehaviour
 	{
 		[Header("Component References")]
@@ -28,37 +29,34 @@ namespace LMirman.VespaIO
 		private bool historyDirty;
 		private bool hasNoEventSystem;
 		private GameObject previousSelectable;
-		private int recentCommandIndex = -1;
+		private int recentInputIndex = -1;
 		private HistoryInput historyInput;
 		private float historyInputTime;
-		private string virtualText;
-		private string lastAutofillPreview;
-		protected readonly HashSet<string> autofillExclusions = new HashSet<string>();
+		private AutoFillValue autoFillPreview;
 
 		private void OnEnable()
 		{
-			DevConsole.console.OutputUpdate += DeveloperConsole_HistoryUpdate;
-			recentCommandIndex = -1;
+			DevConsole.console.OutputUpdate += ConsoleOnOutputUpdate;
 			inputText.onValueChanged.AddListener(InputText_OnValueChanged);
 			canvasScaler.scaleFactor = NativeSettings.Config.consoleScale;
+			recentInputIndex = -1;
 		}
 
 		private void OnDisable()
 		{
-			DevConsole.console.OutputUpdate -= DeveloperConsole_HistoryUpdate;
+			DevConsole.console.OutputUpdate -= ConsoleOnOutputUpdate;
 			inputText.onValueChanged.RemoveListener(InputText_OnValueChanged);
 		}
 
-		private void DeveloperConsole_HistoryUpdate()
+		private void ConsoleOnOutputUpdate()
 		{
 			historyDirty = true;
 		}
 
 		private void InputText_OnValueChanged(string value)
 		{
-			recentCommandIndex = -1;
-			autofillExclusions.Clear();
-			virtualText = value;
+			recentInputIndex = -1;
+			DevConsole.console.VirtualText = value;
 		}
 
 		private void Start()
@@ -83,14 +81,21 @@ namespace LMirman.VespaIO
 		private void Update()
 		{
 			ConsoleSettingsConfig config = NativeSettings.Config;
-			bool shouldInput = DetermineShouldInput(config);
+			bool shouldInput = DetermineShouldInput();
 			bool openKey = shouldInput && GetKeysDown(config.openConsoleKeycodes);
-			bool exitKey = shouldInput && DetermineShouldExit(config);
+			bool exitKey = shouldInput && DetermineShouldExit();
 
 			UpdateTraverseCommandHistory();
 			UpdateAutofillPreview();
-			UpdateAutofillInput();
 
+			// Auto fill
+			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab) && DevConsole.console.ApplyNextAutoFill(out string newInputText))
+			{
+				inputText.SetTextWithoutNotify(newInputText);
+				inputText.caretPosition = inputText.text.Length;
+			}
+
+			// Change active state
 			if ((DevConsole.ConsoleActive || !DevConsole.console.Enabled) && exitKey)
 			{
 				SetConsoleState(false);
@@ -105,179 +110,113 @@ namespace LMirman.VespaIO
 				}
 			}
 
+			// Update output
 			if (historyDirty)
 			{
 				history.text = DevConsole.console.GetOutputLog();
 				historyDirty = false;
 			}
-		}
 
-		private bool DetermineShouldInput(ConsoleSettingsConfig config)
-		{
-			return !config.requireHeldKeyToToggle || GetKeysHeld(config.inputWhileHeldKeycodes);
-		}
-
-		private bool DetermineShouldExit(ConsoleSettingsConfig config)
-		{
-			if (GetKeysDown(config.closeAnyConsoleKeycodes))
+			bool DetermineShouldInput()
 			{
-				return true;
-			}
-			else if (GetKeysDown(config.closeEmptyConsoleKeycodes) && inputText.text.Length <= 1)
-			{
-				return true;
-			}
-			else if (Input.GetMouseButtonDown(0) && config.closeConsoleOnLeftClick)
-			{
-				return true;
-			}
-			else
-			{
-				return false;
-			}
-		}
-
-		private void UpdateAutofillPreview()
-		{
-			if (inputText.text == lastAutofillPreview)
-			{
-				return;
+				return !config.requireHeldKeyToToggle || GetKeysHeld(config.inputWhileHeldKeycodes);
 			}
 
-			AutoFillValue foundCommand = DevConsole.console.GetAutoFillValue(virtualText, autofillExclusions);
-			if (foundCommand != null)
+			bool DetermineShouldExit()
 			{
-				autofillPreview.text = foundCommand.newWord;
-				autofillPreview.enabled = true;
-			}
-			else
-			{
-				autofillPreview.enabled = false;
-				autofillPreview.text = string.Empty;
-			}
-
-			lastAutofillPreview = inputText.text;
-		}
-
-		private void UpdateAutofillInput()
-		{
-			if (!DevConsole.ConsoleActive || !Input.GetKeyDown(KeyCode.Tab))
-			{
-				return;
-			}
-
-			AutoFillValue autoFillValue = DevConsole.console.GetAutoFillValue(virtualText, autofillExclusions);
-			if (autoFillValue != null)
-			{
-				InsertAutofill(autoFillValue);
-				return;
-			}
-
-			autofillExclusions.Clear();
-			autoFillValue = DevConsole.console.GetAutoFillValue(virtualText, autofillExclusions);
-			if (autoFillValue != null)
-			{
-				InsertAutofill(autoFillValue);
-			}
-		}
-
-		private void InsertAutofill(AutoFillValue autoFillValue)
-		{
-			autofillExclusions.Add(autoFillValue.newWord);
-			inputText.SetTextWithoutNotify($"{virtualText.Substring(0, autoFillValue.globalStartIndex)}{autoFillValue.newWord} ");
-			inputText.caretPosition = inputText.text.Length;
-		}
-
-		private void UpdateTraverseCommandHistory()
-		{
-			// Traverse command history on up/down arrow key down.
-			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.UpArrow))
-			{
-				SetRecentCommandInput(1);
-				historyInput = HistoryInput.Up;
-				historyInputTime = 0;
-			}
-			else if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.DownArrow))
-			{
-				SetRecentCommandInput(-1);
-				historyInput = HistoryInput.Down;
-				historyInputTime = 0;
-			}
-
-			// Held key scroll
-			if (historyInput == HistoryInput.Up)
-			{
-				Scroll(1, KeyCode.UpArrow);
-			}
-			else if (historyInput == HistoryInput.Down)
-			{
-				Scroll(-1, KeyCode.DownArrow);
-			}
-
-			void Scroll(int direction, KeyCode stopKeyCode)
-			{
-				historyInputTime += Time.unscaledDeltaTime;
-				if (historyInputTime > 0.5f)
+				if (GetKeysDown(config.closeAnyConsoleKeycodes))
 				{
-					SetRecentCommandInput(direction);
-					historyInputTime -= 0.15f;
+					return true;
 				}
-
-				if (Input.GetKeyUp(stopKeyCode) || recentCommandIndex == -1 || recentCommandIndex == DevConsole.console.recentInputs.Count - 1)
+				else if (GetKeysDown(config.closeEmptyConsoleKeycodes) && inputText.text.Length <= 1)
 				{
-					historyInput = HistoryInput.None;
+					return true;
+				}
+				else if (Input.GetMouseButtonDown(0) && config.closeConsoleOnLeftClick)
+				{
+					return true;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			void UpdateTraverseCommandHistory()
+			{
+				// Traverse command history on up/down arrow key down.
+				if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.UpArrow))
+				{
+					SetRecentInput(1);
+					historyInput = HistoryInput.Up;
 					historyInputTime = 0;
 				}
+				else if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.DownArrow))
+				{
+					SetRecentInput(-1);
+					historyInput = HistoryInput.Down;
+					historyInputTime = 0;
+				}
+
+				// Held key scroll
+				if (historyInput == HistoryInput.Up)
+				{
+					Scroll(1, KeyCode.UpArrow);
+				}
+				else if (historyInput == HistoryInput.Down)
+				{
+					Scroll(-1, KeyCode.DownArrow);
+				}
+
+				void Scroll(int direction, KeyCode stopKeyCode)
+				{
+					historyInputTime += Time.unscaledDeltaTime;
+					if (historyInputTime > 0.5f)
+					{
+						SetRecentInput(direction);
+						historyInputTime -= 0.15f;
+					}
+
+					if (Input.GetKeyUp(stopKeyCode) || recentInputIndex == -1 || recentInputIndex == DevConsole.console.recentInputs.Count - 1)
+					{
+						historyInput = HistoryInput.None;
+						historyInputTime = 0;
+					}
+				}
+			}
+
+			void UpdateAutofillPreview()
+			{
+				if (autoFillPreview == DevConsole.console.NextAutofill)
+				{
+					return;
+				}
+
+				autoFillPreview = DevConsole.console.NextAutofill;
+				if (autoFillPreview != null)
+				{
+					autofillPreview.text = autoFillPreview.newWord;
+					autofillPreview.enabled = true;
+				}
+				else
+				{
+					autofillPreview.enabled = false;
+					autofillPreview.text = string.Empty;
+				}
 			}
 		}
 
-		private void SetRecentCommandInput(int direction)
+		private void OnSubmit(string submitText)
 		{
-			recentCommandIndex = Mathf.Clamp(recentCommandIndex + direction, -1, DevConsole.console.recentInputs.Count - 1);
-			if (recentCommandIndex == -1 || DevConsole.console.recentInputs.Count <= 0)
+			if (DevConsole.ConsoleActive && !string.IsNullOrWhiteSpace(submitText))
 			{
-				virtualText = string.Empty;
 				inputText.SetTextWithoutNotify(string.Empty);
+				DevConsole.console.VirtualText = string.Empty;
+				DevConsole.console.RunInput(submitText);
+				EventSystem.current.SetSelectedGameObject(inputText.gameObject);
+				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
+				recentInputIndex = -1;
 			}
-			else
-			{
-				LinkedListNode<string> current = DevConsole.console.recentInputs.First;
-				for (int i = 0; i < recentCommandIndex; i++)
-				{
-					current = current.Next;
-				}
-
-				virtualText = current.Value;
-				inputText.SetTextWithoutNotify(current.Value);
-			}
-
-			inputText.caretPosition = inputText.text.Length;
-		}
-
-		private bool GetKeysHeld(KeyCode[] keyCodes)
-		{
-			for (int i = 0; i < keyCodes.Length; i++)
-			{
-				if (Input.GetKey(keyCodes[i]))
-				{
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		private bool GetKeysDown(KeyCode[] keyCodes)
-		{
-			for (int i = 0; i < keyCodes.Length; i++)
-			{
-				if (Input.GetKeyDown(keyCodes[i]))
-				{
-					return true;
-				}
-			}
-
-			return false;
 		}
 
 		public void SetConsoleState(bool value)
@@ -291,8 +230,8 @@ namespace LMirman.VespaIO
 			canvas.enabled = value;
 			inputText.enabled = value;
 			inputText.SetTextWithoutNotify(string.Empty);
-			virtualText = string.Empty;
-			recentCommandIndex = -1;
+			DevConsole.console.VirtualText = string.Empty;
+			recentInputIndex = -1;
 			if (EventSystem.current != null)
 			{
 				if (value)
@@ -326,20 +265,42 @@ namespace LMirman.VespaIO
 #endif
 		}
 
-		private void OnSubmit(string submitText)
+		private void SetRecentInput(int direction)
 		{
-			if (DevConsole.ConsoleActive && !string.IsNullOrWhiteSpace(submitText))
-			{
-				inputText.SetTextWithoutNotify(string.Empty);
-				virtualText = string.Empty;
-				DevConsole.Log("> " + submitText);
-				DevConsole.console.RunInput(submitText);
-				EventSystem.current.SetSelectedGameObject(inputText.gameObject);
-				inputText.OnPointerClick(new PointerEventData(EventSystem.current));
-				recentCommandIndex = -1;
-				autofillExclusions.Clear();
-			}
+			recentInputIndex = Mathf.Clamp(recentInputIndex + direction, -1, DevConsole.console.recentInputs.Count - 1);
+			string recentInput = DevConsole.console.GetRecentInputByIndex(recentInputIndex);
+			DevConsole.console.VirtualText = recentInput;
+			inputText.SetTextWithoutNotify(recentInput);
+			inputText.caretPosition = inputText.text.Length;
 		}
+
+		#region Input Handling
+		private bool GetKeysHeld(KeyCode[] keyCodes)
+		{
+			foreach (KeyCode keyCode in keyCodes)
+			{
+				if (Input.GetKey(keyCode))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private bool GetKeysDown(KeyCode[] keyCodes)
+		{
+			foreach (KeyCode keyCode in keyCodes)
+			{
+				if (Input.GetKeyDown(keyCode))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+		#endregion
 
 		private enum HistoryInput
 		{
