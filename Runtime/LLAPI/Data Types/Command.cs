@@ -49,7 +49,7 @@ namespace LMirman.VespaIO
 		/// You are expected to return a value that will <b>completely replace</b> the relevant word.
 		/// If there is no suitable autofill value for the word that is being input return `null` to tell the console there is no relevant autofill value.
 		/// </remarks>
-		public MethodInfo AutofillMethod { get; private set; }
+		public Func<AutofillBuilder, AutofillValue> AutofillMethod { get; private set; }
 
 		/// <summary>
 		/// Used to build the guide property without as much garbage collection overhead as string concatenation
@@ -120,7 +120,7 @@ namespace LMirman.VespaIO
 		{
 			if (autofillMethodInfo != null)
 			{
-				AutofillMethod = autofillMethodInfo;
+				AutofillMethod = autofillMethodInfo.CreateDelegate(typeof(Func<AutofillBuilder, AutofillValue>)) as Func<AutofillBuilder, AutofillValue>;
 			}
 		}
 

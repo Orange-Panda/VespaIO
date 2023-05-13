@@ -326,7 +326,7 @@ namespace LMirman.VespaIO
 				autofillBuilder.RelevantWordIndex = isNewWordRelevant ? words.Count : words.Count - 1;
 				autofillBuilder.RelevantWordCharIndex = isNewWordRelevant ? commandStartIndex + lastWord.startIndex + lastWord.text.Length + 1 : commandStartIndex + lastWord.startIndex;
 				autofillBuilder.Exclusions = autofillExclusions;
-				return foundCommand.AutofillMethod.Invoke(null, new object[] { autofillBuilder }) as AutofillValue;
+				return foundCommand.AutofillMethod.Invoke(autofillBuilder);
 			}
 
 			return null;
