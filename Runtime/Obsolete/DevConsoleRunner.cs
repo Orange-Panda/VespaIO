@@ -32,7 +32,7 @@ namespace LMirman.VespaIO
 		private int recentInputIndex = -1;
 		private HistoryInput historyInput;
 		private float historyInputTime;
-		private AutoFillValue autoFillPreview;
+		private AutofillValue autofillPreviewValue;
 
 		private void OnEnable()
 		{
@@ -89,7 +89,7 @@ namespace LMirman.VespaIO
 			UpdateAutofillPreview();
 
 			// Auto fill
-			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab) && DevConsole.console.ApplyNextAutoFill(out string newInputText))
+			if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab) && DevConsole.console.ApplyNextAutofill(out string newInputText))
 			{
 				inputText.SetTextWithoutNotify(newInputText);
 				inputText.caretPosition = inputText.text.Length;
@@ -187,15 +187,15 @@ namespace LMirman.VespaIO
 
 			void UpdateAutofillPreview()
 			{
-				if (autoFillPreview == DevConsole.console.NextAutofill)
+				if (autofillPreviewValue == DevConsole.console.NextAutofill)
 				{
 					return;
 				}
 
-				autoFillPreview = DevConsole.console.NextAutofill;
-				if (autoFillPreview != null)
+				autofillPreviewValue = DevConsole.console.NextAutofill;
+				if (autofillPreviewValue != null)
 				{
-					autofillPreview.text = autoFillPreview.newWord;
+					autofillPreview.text = autofillPreviewValue.newWord;
 					autofillPreview.enabled = true;
 				}
 				else

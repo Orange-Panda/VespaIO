@@ -106,7 +106,6 @@ namespace LMirman.VespaIO
 				}
 				else
 				{
-					//TODO: Eventually there should be support for an "invisible" Console parameter so the DevConsole doesn't have to be explicitly referenced.
 					methodInfo.Invoke(null, methodParameters);
 					return InvokeResult.Success;
 				}

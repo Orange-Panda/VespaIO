@@ -196,7 +196,13 @@ namespace LMirman.VespaIO
 				string substring = WordStringBuilder.ToString();
 				if (isLiteral || !string.IsNullOrWhiteSpace(substring))
 				{
-					output.Add(new Word(substring, isLiteral, wordStartIndex));
+					Word.Context context = isLiteral ? Word.Context.IsLiteral : Word.Context.None;
+					if (inQuote)
+					{
+						context |= Word.Context.IsInOpenLiteral;
+					}
+					
+					output.Add(new Word(substring, context, wordStartIndex));
 				}
 
 				isLiteral = false;

@@ -105,5 +105,8 @@ namespace LMirman.VespaIO
 			lookup.Clear();
 			sortDirty = true;
 		}
+		
+		// TODO: Make an IEnumerable here and in AliasSet that gets only valid (cheat sensitive) and non-hidden commands from a string query.
+		// TODO: Also implement using the IEnumerable in places that current naively iterate over the entire set.
 	}
 }

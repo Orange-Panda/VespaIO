@@ -22,9 +22,9 @@ namespace LMirman.VespaIO
 		}
 
 		/// <summary>
-		/// If <see cref="ApplyNextAutoFill"/> were to be invoked, this auto fill value will be input into <see cref="VirtualText"/> and another class 
+		/// If <see cref="ApplyNextAutofill"/> were to be invoked, this auto fill value will be input into <see cref="VirtualText"/> and another class 
 		/// </summary>
-		public AutoFillValue NextAutofill { get; private set; }
+		public AutofillValue NextAutofill { get; private set; }
 
 		public override void RunInvocation(Invocation invocation)
 		{
@@ -48,10 +48,10 @@ namespace LMirman.VespaIO
 
 		private void UpdateNextAutofill()
 		{
-			NextAutofill = GetAutoFillValue(virtualText, autofillExclusions);
+			NextAutofill = GetAutofillValue(virtualText, autofillExclusions);
 		}
 
-		public bool ApplyNextAutoFill(out string newInputValue)
+		public bool ApplyNextAutofill(out string newInputValue)
 		{
 			if (NextAutofill == null)
 			{
@@ -61,10 +61,10 @@ namespace LMirman.VespaIO
 
 			if (NextAutofill != null)
 			{
-				AutoFillValue autoFillValue = NextAutofill;
-				autofillExclusions.Add(autoFillValue.newWord);
+				AutofillValue autofillValue = NextAutofill;
+				autofillExclusions.Add(autofillValue.newWord);
 				UpdateNextAutofill();
-				newInputValue = $"{virtualText.Substring(0, autoFillValue.globalStartIndex)}{autoFillValue.newWord} ";
+				newInputValue = $"{virtualText.Substring(0, autofillValue.globalStartIndex)}{autofillValue.newWord} ";
 				return true;
 			}
 			else

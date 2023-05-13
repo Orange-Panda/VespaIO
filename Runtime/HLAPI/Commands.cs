@@ -48,6 +48,46 @@ namespace LMirman.VespaIO
 				commandSet.RegisterCommand(staticCommand.properties, staticCommand.methodInfo);
 			}
 
+			List<AttributeMethod> attributeMethods = VespaReflection.GetAttributeMethodsFromClasses<CommandAutofillAttribute>(classes, VespaReflection.StaticMethodBindingFlags);
+			foreach (AttributeMethod attributeMethod in attributeMethods)
+			{
+				if (!(attributeMethod.attribute is CommandAutofillAttribute autofillAttribute))
+				{
+					continue;
+				}
+
+				ParameterInfo[] parameters = attributeMethod.methodInfo.GetParameters();
+				if (!commandSet.TryGetCommand(autofillAttribute.Key, out Command command))
+				{
+#if UNITY_EDITOR
+					DevConsole.Log($"Autofill attribute of key \"{autofillAttribute.Key}\" was defined but there is no such command present.", Console.LogStyling.Warning);
+#endif
+				}
+				else if (!attributeMethod.methodInfo.IsStatic)
+				{
+#if UNITY_EDITOR
+					DevConsole.Log($"Autofill attribute of key \"{autofillAttribute.Key}\" was defined but the method is not static!", Console.LogStyling.Warning);
+#endif
+				}
+				else if (parameters.Length != 1 || parameters[0].ParameterType != typeof(AutofillBuilder))
+				{
+#if UNITY_EDITOR
+					DevConsole.Log($"Autofill attribute of key \"{autofillAttribute.Key}\" was defined but the method does not take the correct parameters.", Console.LogStyling.Warning);
+					DevConsole.Log("Autofill methods must have exactly one parameter of type 'AutofillBuilder'");
+#endif		
+				}
+				else if (attributeMethod.methodInfo.ReturnType != typeof(AutofillValue))
+				{
+#if UNITY_EDITOR
+					DevConsole.Log($"Autofill attribute of key \"{autofillAttribute.Key}\" was defined but the return type is not of type `AutofillValue`", Console.LogStyling.Warning);
+#endif		
+				}
+				else
+				{
+					command.SetAutofillMethod(attributeMethod.methodInfo);
+				}
+			}
+
 #if UNITY_EDITOR // Only done in editor since the end user should not care about this message and not checking this dramatically improves performance.
 			if (NativeSettings.Config.warnForNonstaticMethods)
 			{

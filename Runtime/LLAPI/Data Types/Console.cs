@@ -266,19 +266,20 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		private static readonly AutoFillValue DefaultAutoFill = new AutoFillValue("help", "help", 0);
+		private static readonly AutofillValue DefaultAutofill = new AutofillValue("help", 0, 0);
+		private readonly AutofillBuilder autofillBuilder = new AutofillBuilder();
 
-		public AutoFillValue GetAutoFillValue(string input, HashSet<string> autofillExclusions)
+		public AutofillValue GetAutofillValue(string input, HashSet<string> autofillExclusions)
 		{
 			if (string.IsNullOrEmpty(input))
 			{
-				return DefaultAutoFill;
+				return DefaultAutofill;
 			}
 
 			List<string> commands = VespaFunctions.SplitStringBySemicolon(input, true, true);
 			if (commands.Count == 0)
 			{
-				return DefaultAutoFill;
+				return DefaultAutofill;
 			}
 
 			string lastCommand = commands[commands.Count - 1];
@@ -304,7 +305,7 @@ namespace LMirman.VespaIO
 				{
 					if (aliasKey.StartsWith(inputCommand) && !autofillExclusions.Contains(aliasKey))
 					{
-						return new AutoFillValue(aliasKey, aliasKey.Substring(inputCommand.Length), commandStartIndex + word.startIndex);
+						return new AutofillValue(aliasKey, inputCommand.Length, commandStartIndex + word.startIndex);
 					}
 				}
 
@@ -312,9 +313,19 @@ namespace LMirman.VespaIO
 				{
 					if (commandKey.StartsWith(inputCommand) && !autofillExclusions.Contains(commandKey))
 					{
-						return new AutoFillValue(commandKey, commandKey.Substring(inputCommand.Length), commandStartIndex + word.startIndex);
+						return new AutofillValue(commandKey, inputCommand.Length, commandStartIndex + word.startIndex);
 					}
 				}
+			}
+			else if (words.Count > 0 && CommandSet.TryGetCommand(words[0].text.CleanseKey(), out Command foundCommand) && foundCommand.AutofillMethod != null)
+			{
+				Word lastWord = words[words.Count - 1];
+				bool isNewWordRelevant = lastCommand.EndsWith(" ") && !lastWord.context.HasFlag(Word.Context.IsInOpenLiteral);
+				autofillBuilder.Words = words;
+				autofillBuilder.RelevantWordIndex = isNewWordRelevant ? words.Count : words.Count - 1;
+				autofillBuilder.RelevantWordCharIndex = isNewWordRelevant ? commandStartIndex + lastWord.startIndex + lastWord.text.Length + 1 : commandStartIndex + lastWord.startIndex;
+				autofillBuilder.Exclusions = autofillExclusions;
+				return foundCommand.AutofillMethod.Invoke(null, new object[] { autofillBuilder }) as AutofillValue;
 			}
 
 			return null;

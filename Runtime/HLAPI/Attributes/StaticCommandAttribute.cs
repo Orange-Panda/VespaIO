@@ -16,16 +16,16 @@ namespace LMirman.VespaIO
 	{
 		/// <inheritdoc cref="ICommandProperties.Key"/>
 		public string Key { get; private set; }
-		
+
 		/// <inheritdoc cref="ICommandProperties.Name"/>
 		public string Name { get; set; } = string.Empty;
-		
+
 		/// <inheritdoc cref="ICommandProperties.Description"/>
 		public string Description { get; set; } = string.Empty;
-		
+
 		/// <inheritdoc cref="ICommandProperties.Cheat"/>
 		public bool Cheat { get; set; }
-		
+
 		/// <inheritdoc cref="ICommandProperties.Hidden"/>
 		public bool Hidden { get; set; }
 

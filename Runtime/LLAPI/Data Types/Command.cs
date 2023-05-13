@@ -42,6 +42,14 @@ namespace LMirman.VespaIO
 		public bool Hidden { get; private set; }
 		/// <inheritdoc cref="ICommandProperties.ManualPriority"/>
 		public int ManualPriority { get; private set; }
+		/// <summary>
+		/// A function that is invoked by the console to try to find values to autofill for parameters
+		/// </summary>
+		/// <remarks>
+		/// You are expected to return a value that will <b>completely replace</b> the relevant word.
+		/// If there is no suitable autofill value for the word that is being input return `null` to tell the console there is no relevant autofill value.
+		/// </remarks>
+		public MethodInfo AutofillMethod { get; private set; }
 
 		/// <summary>
 		/// Used to build the guide property without as much garbage collection overhead as string concatenation
@@ -76,7 +84,8 @@ namespace LMirman.VespaIO
 		/// - Will overwrite <see cref="Name"/> if not null or white space<br/>
 		/// - Will overwrite <see cref="Description"/> if not null or white space<br/>
 		/// - Will permanently mark this command as <see cref="Hidden"/> and/or <see cref="Cheat"/> if either are set (independently).<br/>
-		/// - Will overwrite <see cref="ManualPriority"/> if it is non-zero
+		/// - Will overwrite <see cref="ManualPriority"/> if it is non-zero<br/>
+		/// - Will overwrite <see cref="AutofillMethod"/> if it is not null
 		/// </remarks>
 		/// <param name="properties">The properties that define this command such as title, description, and cheat properties.</param>
 		public void SetAttributeProperties(ICommandProperties properties)
@@ -105,6 +114,14 @@ namespace LMirman.VespaIO
 			Cheat = Cheat | properties.Cheat;
 			Hidden = Hidden | properties.Hidden;
 			ManualPriority = properties.ManualPriority != default ? properties.ManualPriority : ManualPriority;
+		}
+
+		public void SetAutofillMethod(MethodInfo autofillMethodInfo)
+		{
+			if (autofillMethodInfo != null)
+			{
+				AutofillMethod = autofillMethodInfo;
+			}
 		}
 
 		/// <summary>
@@ -250,7 +267,7 @@ namespace LMirman.VespaIO
 		{
 			GuideBuilder.Clear();
 			GuideBuilder.AppendFormat("{0} - \"{1}\"\n", key, Name);
-			
+
 			for (int i = 0; i < methods.Count; i++)
 			{
 				MethodInfo method = methods[i];

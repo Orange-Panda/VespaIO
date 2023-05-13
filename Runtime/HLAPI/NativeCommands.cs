@@ -48,6 +48,13 @@ namespace LMirman.VespaIO
 			SceneManager.LoadScene(target);
 		}
 
+		[CommandAutofill("scene")]
+		// TODO: Autofill from scenes in the build target
+		private static AutofillValue GetSceneAutofillValue(AutofillBuilder autofillBuilder)
+		{
+			return autofillBuilder.CreateOverwriteAutofill("SampleScene");
+		}
+
 		[StaticCommand("echo", Name = "Echo", Description = "Repeat the input back to the console.")]
 		public static void Echo(string message)
 		{
@@ -102,6 +109,26 @@ namespace LMirman.VespaIO
 			{
 				PrintMatching(value);
 			}
+		}
+
+		[CommandAutofill("help")]
+		private static AutofillValue GetHelpAutofillValue(AutofillBuilder autofillBuilder)
+		{
+			if (autofillBuilder.RelevantWordIndex != 1)
+			{
+				return null;
+			}
+
+			string relevantWord = autofillBuilder.GetRelevantWordText().CleanseKey();
+			foreach (string commandKey in Commands.commandSet.Keys)
+			{
+				if (commandKey.StartsWith(relevantWord) && !autofillBuilder.Exclusions.Contains(commandKey))
+				{
+					return autofillBuilder.CreateCompletionAutofill(commandKey);
+				}
+			}
+
+			return null;
 		}
 
 		private static int CountPages()
@@ -221,6 +248,26 @@ namespace LMirman.VespaIO
 			DevConsole.Log(didRemoveAlias
 				? $"<color=red>-</color> Removed alias \"{alias}\"."
 				: $"<color=yellow>Warning:</color> Tried to remove alias \"{alias}\" but no such alias was found.");
+		}
+
+		[CommandAutofill("alias_delete")]
+		private static AutofillValue GetAliasAutofillValue(AutofillBuilder autofillBuilder)
+		{
+			if (autofillBuilder.RelevantWordIndex != 1)
+			{
+				return null;
+			}
+
+			string relevantWord = autofillBuilder.GetRelevantWordText().CleanseKey();
+			foreach (string aliasKey in Aliases.aliasSet.Keys)
+			{
+				if (aliasKey.StartsWith(relevantWord) && !autofillBuilder.Exclusions.Contains(aliasKey))
+				{
+					return autofillBuilder.CreateCompletionAutofill(aliasKey);
+				}
+			}
+
+			return null;
 		}
 
 		[StaticCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]

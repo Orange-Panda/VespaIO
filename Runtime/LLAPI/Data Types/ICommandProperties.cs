@@ -9,7 +9,7 @@ namespace LMirman.VespaIO
 		/// This is immutable to avoid conflicts with other command definitions and to preserve key definitions in command dictionaries that contain this entry.
 		/// </remarks>
 		public string Key { get; }
-		
+
 		/// <summary>
 		/// The name or title of the command in plain english.
 		/// </summary>
@@ -25,7 +25,7 @@ namespace LMirman.VespaIO
 		/// If no name is provided by a command definition will default to the first method name found.
 		/// </remarks>
 		public string Name { get; }
-		
+
 		/// <summary>
 		/// The description of the command.
 		/// </summary>
@@ -40,7 +40,7 @@ namespace LMirman.VespaIO
 		/// Should be a brief explanation of the functionality of the command without any detailed explanation of functionality.
 		/// </remarks>
 		public string Description { get; }
-		
+
 		/// <summary>
 		/// If this command is a cheat command.<br/><br/>
 		/// When true the command will be omitted from help and autofill while cheats are not enabled in addition to be unable to be executed in the console until enabling cheats.
@@ -62,7 +62,7 @@ namespace LMirman.VespaIO
 		/// - Understand the fact that players may modify code, especially JIT code, and execute code that you don't intend them to.<br/>
 		/// </remarks>
 		public bool Cheat { get; }
-		
+
 		/// <summary>
 		/// If this command should be accessible by auto-fill and help functionalities of the console.<br/><br/>
 		/// When true will be omitted from being displayed in such sections.
@@ -78,7 +78,7 @@ namespace LMirman.VespaIO
 		/// Assuming the user knows the command exists they can execute it as if it were not hidden.
 		/// </remarks>
 		public bool Hidden { get; }
-		
+
 		/// <summary>
 		/// The priority of this command relative to other commands.
 		/// The higher this value, the earlier this command should appear in a sorted list of commands.

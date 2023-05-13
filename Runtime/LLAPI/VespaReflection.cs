@@ -31,6 +31,27 @@ namespace LMirman.VespaIO
 			return commands;
 		}
 
+		public static List<AttributeMethod> GetAttributeMethodsFromClasses<T>(List<Type> classes, BindingFlags bindingFlags) where T : Attribute
+		{
+			List<AttributeMethod> attributes = new List<AttributeMethod>();
+			foreach (Type type in classes)
+			{
+				foreach (MethodInfo method in type.GetMethods(bindingFlags))
+				{
+					object[] customAttributes = method.GetCustomAttributes(typeof(T), false);
+					foreach (object customAttribute in customAttributes)
+					{
+						if (customAttribute is T attribute)
+						{
+							attributes.Add(new AttributeMethod(attribute, method));
+						}
+					}
+				}
+			}
+
+			return attributes;
+		}
+
 		/// <summary>
 		/// Get a list of all classes within an array of assemblies
 		/// </summary>

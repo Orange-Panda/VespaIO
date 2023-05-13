@@ -22,15 +22,17 @@ namespace LMirman.VespaIO
 
 		public Argument(Word word)
 		{
+			bool isLiteral = word.context.HasFlag(Word.Context.IsLiteral);
+			
 			// Set string value
 			stringValue = new ArgType<string>(word.text, true);
 
 			// Set int value
-			bool didParseInt = !word.isLiteral & int.TryParse(word.text, out int intParse);
+			bool didParseInt = !isLiteral & int.TryParse(word.text, out int intParse);
 			intValue = new ArgType<int>(didParseInt ? intParse : -1, didParseInt);
 
 			// Set float value
-			bool didParseFloat = !word.isLiteral & float.TryParse(word.text, out float floatParse);
+			bool didParseFloat = !isLiteral & float.TryParse(word.text, out float floatParse);
 			floatValue = new ArgType<float>(didParseFloat ? floatParse : -1, didParseFloat);
 
 			// Set bool value
@@ -40,7 +42,7 @@ namespace LMirman.VespaIO
 			}
 			else
 			{
-				bool didParseBool = !word.isLiteral & bool.TryParse(word.text, out bool boolParse);
+				bool didParseBool = !isLiteral & bool.TryParse(word.text, out bool boolParse);
 				boolValue = new ArgType<bool>(didParseBool && boolParse, didParseBool);
 			}
 		}
