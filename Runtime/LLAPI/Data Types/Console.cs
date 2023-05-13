@@ -261,6 +261,10 @@ namespace LMirman.VespaIO
 					return $"<color=#D55>[Error]</color> {text}";
 				case LogStyling.Critical:
 					return $"<color=#C22>[Critical]</color> {text}";
+				case LogStyling.Exception:
+					return $"<color=#D55>[Exception]</color> {text}";
+				case LogStyling.Assert:
+					return $"<color=#FC5>[Assert]</color> {text}";
 				default:
 					throw new ArgumentOutOfRangeException(nameof(logStyling), logStyling, null);
 			}
@@ -357,49 +361,57 @@ namespace LMirman.VespaIO
 			/// <remarks>
 			/// Useful for when you want to apply your own styling or just send a raw message to the console.
 			/// </remarks>
-			Plain,
+			Plain = 0,
 			/// <summary>
 			/// Applies debug styling to the log message
 			/// </summary>
 			/// <remarks>
 			/// Useful for messages that are exclusively for debugging purposes.
 			/// </remarks>
-			Debug,
+			Debug = 1,
 			/// <summary>
 			/// Applies info styling to the log message
 			/// </summary>
 			/// <remarks>
 			/// Useful for messages that provide info about the application state.
 			/// </remarks>
-			Info,
+			Info = 2,
 			/// <summary>
 			/// Applies notice styling to the log message
 			/// </summary>
 			/// <remarks>
 			/// Useful for messages that inform about something that doesn't cause any problems but the user should be aware of.
 			/// </remarks>
-			Notice,
+			Notice = 3,
 			/// <summary>
 			/// Applies warning styling to the log message
 			/// </summary>
 			/// <remarks>
 			/// Useful for messages that inform about something not functioning as expected but behavior will still be execute.
 			/// </remarks>
-			Warning,
+			Warning = 4,
 			/// <summary>
 			/// Applies error styling to the log message
 			/// </summary>
 			/// <remarks>
 			/// Useful for messages that inform about an error occuring that prevents behaviors from executing at all.
 			/// </remarks>
-			Error,
+			Error = 5,
 			/// <summary>
 			/// Applies critical styling to the log message
 			/// </summary>
 			/// <remarks>
 			/// Useful for messages that inform about an error that will have consequences to other code systems.
 			/// </remarks>
-			Critical
+			Critical = 6,
+			/// <summary>
+			/// Applies exception styling to the log message
+			/// </summary>
+			Exception = 7,
+			/// <summary>
+			/// Applies assert styling to the log message
+			/// </summary>
+			Assert = 8
 		}
 	}
 }

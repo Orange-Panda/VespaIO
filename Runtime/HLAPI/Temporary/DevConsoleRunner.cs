@@ -34,6 +34,16 @@ namespace LMirman.VespaIO
 		private float historyInputTime;
 		private AutofillValue autofillPreviewValue;
 
+		private void Awake()
+		{
+			Application.logMessageReceived += ApplicationOnLogMessageReceived;
+		}
+
+		private void OnDestroy()
+		{
+			Application.logMessageReceived -= ApplicationOnLogMessageReceived;
+		}
+
 		private void OnEnable()
 		{
 			DevConsole.console.OutputUpdate += ConsoleOnOutputUpdate;
@@ -46,6 +56,31 @@ namespace LMirman.VespaIO
 		{
 			DevConsole.console.OutputUpdate -= ConsoleOnOutputUpdate;
 			inputText.onValueChanged.RemoveListener(InputText_OnValueChanged);
+		}
+
+		private void ApplicationOnLogMessageReceived(string condition, string stacktrace, LogType type)
+		{
+			Console.LogStyling logStyling = Console.LogStyling.Plain;
+			switch (type)
+			{
+				case LogType.Error:
+					logStyling = Console.LogStyling.Error;
+					break;
+				case LogType.Assert:
+					logStyling = Console.LogStyling.Assert;
+					break;
+				case LogType.Warning:
+					logStyling = Console.LogStyling.Warning;
+					break;
+				case LogType.Log:
+					logStyling = Console.LogStyling.Info;
+					break;
+				case LogType.Exception:
+					logStyling = Console.LogStyling.Exception;
+					break;
+			}
+
+			DevConsole.Log(condition, logStyling);
 		}
 
 		private void ConsoleOnOutputUpdate()
