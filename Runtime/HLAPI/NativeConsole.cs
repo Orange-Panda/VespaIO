@@ -65,7 +65,7 @@ namespace LMirman.VespaIO
 				AutofillValue autofillValue = NextAutofill;
 				autofillExclusions.Add(autofillValue.newWord);
 				UpdateNextAutofill();
-				newInputValue = $"{virtualText.Substring(0, autofillValue.globalStartIndex)}{autofillValue.newWord} ";
+				newInputValue = $"{virtualText.Substring(0, autofillValue.globalStartIndex)}{autofillValue.markupNewWord} ";
 				return true;
 			}
 			else

@@ -12,6 +12,10 @@ namespace LMirman.VespaIO
 		/// </remarks>
 		public readonly string newWord;
 		/// <summary>
+		/// <see cref="newWord"/> with special markup if necessary (such as quotations).
+		/// </summary>
+		public readonly string markupNewWord;
+		/// <summary>
 		/// The text that will be insert into the console to place the autofill word in
 		/// </summary>
 		/// <remarks>
@@ -25,24 +29,24 @@ namespace LMirman.VespaIO
 
 		public AutofillValue(string newWord, int oldWordLength, int globalStartIndex)
 		{
-			newWord = MakeLiteralIfNecessary(newWord);
 			this.newWord = newWord;
+			markupNewWord = MakeLiteralIfNecessary(newWord);
 			insertText = newWord.Substring(oldWordLength);
 			this.globalStartIndex = globalStartIndex;
 		}
 
 		public AutofillValue(string newWord, string insertText, int globalStartIndex)
 		{
-			newWord = MakeLiteralIfNecessary(newWord);
 			this.newWord = newWord;
+			markupNewWord = MakeLiteralIfNecessary(newWord);
 			this.insertText = insertText;
 			this.globalStartIndex = globalStartIndex;
 		}
 
 		public AutofillValue(string newWord, int globalStartIndex)
 		{
-			newWord = MakeLiteralIfNecessary(newWord);
 			this.newWord = newWord;
+			markupNewWord = MakeLiteralIfNecessary(newWord);
 			this.globalStartIndex = globalStartIndex;
 			insertText = string.Empty;
 		}

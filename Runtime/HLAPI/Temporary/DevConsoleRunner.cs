@@ -195,7 +195,7 @@ namespace LMirman.VespaIO
 				autofillPreviewValue = DevConsole.console.NextAutofill;
 				if (autofillPreviewValue != null)
 				{
-					autofillPreview.text = autofillPreviewValue.newWord;
+					autofillPreview.text = autofillPreviewValue.markupNewWord;
 					autofillPreview.enabled = true;
 				}
 				else
