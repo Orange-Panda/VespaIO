@@ -29,7 +29,7 @@ namespace LMirman.VespaIO
 		internal static void PreloadLookup() { }
 
 		/// <summary>
-		/// Build the command set for all command attributes in the project by searching for <see cref="StaticCommandAttribute"/>.
+		/// Build the command set for all command attributes in the project by searching for <see cref="VespaCommandAttribute"/>.
 		/// </summary>
 		/// <remarks>
 		/// This is an expensive operation and should be used sparingly.
@@ -42,10 +42,17 @@ namespace LMirman.VespaIO
 			commandSet.UnregisterAllCommands();
 			Assembly[] assemblies = VespaReflection.GetAssembliesFromDomain(AppDomain.CurrentDomain, GetRegexFilter(NativeSettings.Config.assemblyFilter));
 			List<Type> classes = VespaReflection.GetClassesFromAssemblies(assemblies);
-			List<CommandMethod> staticCommands = VespaReflection.GetCommandMethodFromClasses<StaticCommandAttribute>(classes, VespaReflection.StaticMethodBindingFlags);
-			foreach (CommandMethod staticCommand in staticCommands)
+			List<CommandDefinition> staticCommands = VespaReflection.GetCommandDefinitionsFromClasses<VespaCommandAttribute>(classes, VespaReflection.StaticMethodBindingFlags, VespaReflection.StaticPropertyBindingFlags);
+			foreach (CommandDefinition commandDefinition in staticCommands)
 			{
-				commandSet.RegisterCommand(staticCommand.properties, staticCommand.methodInfo);
+				if (commandDefinition.bindingFlags.HasFlag(BindingFlags.InvokeMethod))
+				{
+					commandSet.RegisterMethod(commandDefinition.properties, commandDefinition.methodInfo);
+				}
+				else if (commandDefinition.bindingFlags.HasFlag(BindingFlags.GetProperty) || commandDefinition.bindingFlags.HasFlag(BindingFlags.SetProperty))
+				{
+					commandSet.RegisterProperty(commandDefinition.properties, commandDefinition.propertyInfo);
+				}
 			}
 
 			List<AttributeMethod> attributeMethods = VespaReflection.GetAttributeMethodsFromClasses<CommandAutofillAttribute>(classes, VespaReflection.StaticMethodBindingFlags);
@@ -91,11 +98,11 @@ namespace LMirman.VespaIO
 #if UNITY_EDITOR // Only done in editor since the end user should not care about this message and not checking this dramatically improves performance.
 			if (NativeSettings.Config.warnForNonstaticMethods)
 			{
-				List<CommandMethod> instancedMethods = VespaReflection.GetCommandMethodFromClasses<StaticCommandAttribute>(classes, VespaReflection.InstanceMethodBindingFlags);
-				foreach (CommandMethod staticCommand in instancedMethods)
+				List<CommandDefinition> instancedMethods = VespaReflection.GetCommandDefinitionsFromClasses<VespaCommandAttribute>(classes, VespaReflection.InstanceMethodBindingFlags, VespaReflection.InstancePropertyBindingFlags);
+				foreach (CommandDefinition commandDefinition in instancedMethods)
 				{
 					string message =
-						$"<color=red>ERROR:</color> Static command attribute with key {staticCommand.properties.Key} is a applied to non-static method {staticCommand.methodInfo.Name}, which is unsupported. The method will not be added to the console.";
+						$"<color=red>ERROR:</color> Command attribute with key {commandDefinition.properties.Key} is a applied to non-static method {commandDefinition.methodInfo.Name}, which is unsupported. The method will not be added to the console.";
 					DevConsole.Log(message);
 				}
 			}

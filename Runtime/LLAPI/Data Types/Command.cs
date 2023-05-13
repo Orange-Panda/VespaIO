@@ -28,6 +28,7 @@ namespace LMirman.VespaIO
 		/// It is not currently possible to override the way by which the guide is generated.
 		/// </remarks>
 		public string Guide { get; private set; }
+		public InvocationType InvokeType { get; private set; }
 
 		// ReSharper disable once InconsistentNaming
 		/// <inheritdoc cref="ICommandProperties.Key"/>
@@ -56,6 +57,7 @@ namespace LMirman.VespaIO
 		/// </summary>
 		private static readonly StringBuilder GuideBuilder = new StringBuilder();
 
+		private PropertyInfo propertyInfo;
 		private readonly List<MethodInfo> methods = new List<MethodInfo>();
 		private readonly string key;
 
@@ -74,6 +76,13 @@ namespace LMirman.VespaIO
 			key = properties.Key.CleanseKey();
 			SetAttributeProperties(properties);
 			AddMethod(method);
+		}
+
+		public Command(ICommandProperties properties, PropertyInfo property)
+		{
+			key = properties.Key.CleanseKey();
+			SetAttributeProperties(properties);
+			SetPropertyTarget(property);
 		}
 
 		/// <summary>
@@ -124,6 +133,26 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		public void SetPropertyTarget(PropertyInfo property)
+		{
+			if (string.IsNullOrWhiteSpace(Name))
+			{
+				Name = property.Name;
+			}
+
+			propertyInfo = property;
+			if (propertyInfo.CanRead)
+			{
+				AutofillMethod = delegate(AutofillBuilder builder)
+				{
+					return builder.CreateOverwriteAutofill(propertyInfo.GetMethod.Invoke(null, new object[] { })?.ToString());
+				};
+			}
+
+			InvokeType = InvocationType.Property;
+			UpdateGuide();
+		}
+
 		/// <summary>
 		/// Add a method to this command definition and automatically update <see cref="Guide"/> to include it.
 		/// </summary>
@@ -135,6 +164,7 @@ namespace LMirman.VespaIO
 				Name = method.Name;
 			}
 
+			InvokeType = InvocationType.Method;
 			methods.Add(method);
 			UpdateGuide();
 		}
@@ -184,6 +214,13 @@ namespace LMirman.VespaIO
 
 		public bool TryGetMethod(Argument[] arguments, out MethodInfo methodInfo, out object[] methodParameters)
 		{
+			if (InvokeType != InvocationType.Method)
+			{
+				methodInfo = null;
+				methodParameters = null;
+				return false;
+			}
+
 			// Get all methods that contain at least
 			List<MethodInfo> validMethods = GetValidMethods(arguments);
 
@@ -263,6 +300,20 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		public bool TryGetPropertyInfo(out PropertyInfo property)
+		{
+			if (InvokeType == InvocationType.Property)
+			{
+				property = propertyInfo;
+				return true;
+			}
+			else
+			{
+				property = null;
+				return false;
+			}
+		}
+
 		private void UpdateGuide()
 		{
 			GuideBuilder.Clear();
@@ -317,6 +368,12 @@ namespace LMirman.VespaIO
 			{
 				return "[INVALID/UNKNOWN]";
 			}
+		}
+
+		public enum InvocationType
+		{
+			Method,
+			Property
 		}
 	}
 }

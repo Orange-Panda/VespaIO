@@ -67,13 +67,31 @@ namespace LMirman.VespaIO
 			return TryGetCommand(key.CleanseKey(), out Command command) ? command : fallbackCommand;
 		}
 
-		public void RegisterCommand(ICommandProperties properties, MethodInfo methodInfo)
+		public void RegisterProperty(ICommandProperties properties, PropertyInfo propertyInfo)
+		{
+			string key = properties.Key.CleanseKey();
+			if (TryGetCommand(key, out Command command))
+			{
+				command.SetPropertyTarget(propertyInfo);
+				command.SetAttributeProperties(properties);
+				sortDirty = true;
+			}
+			else
+			{
+				command = new Command(properties, propertyInfo);
+				lookup.Add(key, command);
+				sortDirty = true;
+			}
+		}
+		
+		public void RegisterMethod(ICommandProperties properties, MethodInfo methodInfo)
 		{
 			string key = properties.Key.CleanseKey();
 			if (TryGetCommand(key, out Command command))
 			{
 				command.AddMethod(methodInfo);
 				command.SetAttributeProperties(properties);
+				sortDirty = true;
 			}
 			else
 			{
@@ -88,7 +106,7 @@ namespace LMirman.VespaIO
 		/// </summary>
 		/// <param name="key">The key of the command you would like to remove.</param>
 		/// <param name="methodInfo">The method you would like to unregister for the command</param>
-		public void UnregisterCommand(string key, MethodInfo methodInfo)
+		public void UnregisterMethod(string key, MethodInfo methodInfo)
 		{
 			key = key.CleanseKey();
 			if (TryGetCommand(key, out Command command))

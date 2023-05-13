@@ -116,6 +116,9 @@ namespace LMirman.VespaIO
 					Log("Invalid arguments provided for command.", LogStyling.Error);
 					Log(invocation.command.Guide);
 					break;
+				case Invocation.ValidState.ErrorInvalidProperty:
+					Log("There was no target property valid for command.", LogStyling.Error);
+					break;
 				default:
 					throw new ArgumentOutOfRangeException();
 			}

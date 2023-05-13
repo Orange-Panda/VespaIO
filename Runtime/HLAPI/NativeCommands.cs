@@ -13,7 +13,7 @@ namespace LMirman.VespaIO
 	{
 		private const int HelpPageLength = 10;
 
-		[StaticCommand("quit", Name = "Quit Application", Description = "Closes the application", ManualPriority = 70)]
+		[VespaCommand("quit", Name = "Quit Application", Description = "Closes the application", ManualPriority = 70)]
 		public static void Quit()
 		{
 #if UNITY_EDITOR
@@ -22,13 +22,13 @@ namespace LMirman.VespaIO
 			Application.Quit();
 		}
 
-		[StaticCommand("welcome", Name = "Welcome Prompt", Description = "Log the welcome prompt into the console")]
+		[VespaCommand("welcome", Name = "Welcome Prompt", Description = "Log the welcome prompt into the console")]
 		public static void Welcome()
 		{
 			DevConsole.PrintWelcome();
 		}
 
-		[StaticCommand("clear", Name = "Clear Console History",
+		[VespaCommand("clear", Name = "Clear Console History",
 			Description =
 				"Clears the entire console history including this command's execution. Usage is recommended when the history grows too large or the application freezes when logging occurs.",
 			ManualPriority = 80)]
@@ -38,13 +38,13 @@ namespace LMirman.VespaIO
 		}
 
 		#region Scene
-		[StaticCommand("scene", Name = "Change Scene", Description = "Changes the scene to the scene name provided by the user", Cheat = true)]
+		[VespaCommand("scene", Name = "Change Scene", Description = "Changes the scene to the scene name provided by the user", Cheat = true)]
 		public static void Scene()
 		{
 			DevConsole.Log($"Current Scene: {SceneManager.GetActiveScene().name}");
 		}
 
-		[StaticCommand("scene", Cheat = true)]
+		[VespaCommand("scene", Cheat = true)]
 		public static void Scene(string target)
 		{
 			DevConsole.Log($"Attempting to load scene: {target}");
@@ -85,13 +85,13 @@ namespace LMirman.VespaIO
 		}
 		#endregion
 
-		[StaticCommand("echo", Name = "Echo", Description = "Repeat the input back to the console.")]
+		[VespaCommand("echo", Name = "Echo", Description = "Repeat the input back to the console.")]
 		public static void Echo(string message)
 		{
 			DevConsole.Log(message);
 		}
 
-		[StaticCommand("cheats", Name = "Enable Cheats", Description = "Enable cheats for this play session.")]
+		[VespaCommand("cheats", Name = "Enable Cheats", Description = "Enable cheats for this play session.")]
 		public static void EnableCheats(string value = "")
 		{
 			if (DevConsole.console.CheatsEnabled)
@@ -115,19 +115,19 @@ namespace LMirman.VespaIO
 		}
 
 		#region Help Commands
-		[StaticCommand("help", Name = "Help Manual", Description = "Search for commands and get assistance with particular commands.", ManualPriority = 90)]
+		[VespaCommand("help", Name = "Help Manual", Description = "Search for commands and get assistance with particular commands.", ManualPriority = 90)]
 		public static void Help()
 		{
 			LogPage();
 		}
 
-		[StaticCommand("help")]
+		[VespaCommand("help")]
 		public static void Help(int pageNum)
 		{
 			LogPage(pageNum);
 		}
 
-		[StaticCommand("help")]
+		[VespaCommand("help")]
 		public static void Help(string query)
 		{
 			string value = query.ToLower();
@@ -222,7 +222,7 @@ namespace LMirman.VespaIO
 		#endregion
 
 		#region Alias Commands
-		[StaticCommand("alias", Name = "Set Alias", Description = "Set a particular alias definition")]
+		[VespaCommand("alias", Name = "Set Alias", Description = "Set a particular alias definition")]
 		public static void SetAlias(string alias, string value)
 		{
 			//Validate alias name
@@ -241,7 +241,7 @@ namespace LMirman.VespaIO
 				: $"<color=yellow>*</color> Modified alias \"{alias}\" to represent \"{value}\"");
 		}
 
-		[StaticCommand("alias_delete", Name = "Delete Alias", Description = "Delete a particular alias definition")]
+		[VespaCommand("alias_delete", Name = "Delete Alias", Description = "Delete a particular alias definition")]
 		public static void DeleteAlias(string alias)
 		{
 			alias = alias.CleanseKey();
@@ -276,13 +276,13 @@ namespace LMirman.VespaIO
 			return null;
 		}
 
-		[StaticCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
+		[VespaCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
 		public static void ResetAllAliasesWarning()
 		{
 			DevConsole.Log("This will remove <b>ALL</b> alias definitions!\nTo confirm alias reset please enter the following command: \"alias_reset_all CONFIRM\"", Console.LogStyling.Notice);
 		}
 
-		[StaticCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
+		[VespaCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]
 		public static void ResetAllAliases(string confirmation)
 		{
 			if (confirmation == "CONFIRM")
@@ -296,8 +296,8 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		[StaticCommand("alias")]
-		[StaticCommand("alias_view", Name = "View Alias", Description = "View the definition for a particular alias")]
+		[VespaCommand("alias")]
+		[VespaCommand("alias_view", Name = "View Alias", Description = "View the definition for a particular alias")]
 		public static void ViewAlias(string alias)
 		{
 			alias = alias.CleanseKey();
@@ -306,7 +306,7 @@ namespace LMirman.VespaIO
 				: $"<color=red>Error:</color> Tried to view alias \"{alias}\" but no such alias was found.");
 		}
 
-		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
+		[VespaCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
 		public static void ListAlias(string filter)
 		{
 			filter = filter.CleanseKey();
@@ -322,7 +322,7 @@ namespace LMirman.VespaIO
 
 		private const int AliasPageLength = 10;
 
-		[StaticCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
+		[VespaCommand("alias_list", Name = "List Aliases", Description = "View list of all aliases that have been defined")]
 		public static void ListAlias(int pageNum = 0)
 		{
 			int pageCount = Mathf.Max(Mathf.CeilToInt((float)Aliases.aliasSet.AliasCount / AliasPageLength), 1);

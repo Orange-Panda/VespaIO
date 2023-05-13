@@ -11,8 +11,8 @@ namespace LMirman.VespaIO
 	/// </remarks>
 	[PublicAPI]
 	[MeansImplicitUse]
-	[AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
-	public class StaticCommandAttribute : Attribute, ICommandProperties
+	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true, Inherited = false)]
+	public class VespaCommandAttribute : Attribute, ICommandProperties
 	{
 		/// <inheritdoc cref="ICommandProperties.Key"/>
 		public string Key { get; private set; }
@@ -40,7 +40,7 @@ namespace LMirman.VespaIO
 		/// Using the attribute on a non-static method will not be usable!
 		/// </remarks>
 		/// <param name="key">The name of the command to match in the developer console.</param>
-		public StaticCommandAttribute(string key)
+		public VespaCommandAttribute(string key)
 		{
 			Key = key.CleanseKey();
 		}

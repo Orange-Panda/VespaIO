@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace LMirman.VespaIO
@@ -23,7 +24,10 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public readonly Command command;
 
+		private readonly Command.InvocationType invocationType;
+		private readonly PropertyInfo propertyInfo;
 		private readonly MethodInfo methodInfo;
+		private readonly Argument[] arguments;
 		private readonly object[] methodParameters;
 
 		private static readonly List<Argument> ArgumentList = new List<Argument>(32);
@@ -61,7 +65,7 @@ namespace LMirman.VespaIO
 					ArgumentList.Add(new Argument(words[i]));
 				}
 
-				Argument[] arguments = ArgumentList.ToArray();
+				arguments = ArgumentList.ToArray();
 				ArgumentList.Clear();
 
 				// See if there is a valid command for this invocation
@@ -72,10 +76,28 @@ namespace LMirman.VespaIO
 				}
 
 				// See if there is a valid method for this invocation
-				if (!command.TryGetMethod(arguments, out methodInfo, out methodParameters))
+				switch (command.InvokeType)
 				{
-					validState = ValidState.ErrorNoMethodForParameters;
-					return;
+					case Command.InvocationType.Method:
+						invocationType = Command.InvocationType.Method;
+						if (!command.TryGetMethod(arguments, out methodInfo, out methodParameters))
+						{
+							validState = ValidState.ErrorNoMethodForParameters;
+							return;
+						}
+
+						break;
+					case Command.InvocationType.Property:
+						invocationType = Command.InvocationType.Property;
+						if (!command.TryGetPropertyInfo(out propertyInfo))
+						{
+							validState = ValidState.ErrorInvalidProperty;
+							return;
+						}
+
+						break;
+					default:
+						throw new ArgumentOutOfRangeException();
 				}
 
 				// After all the steps have occurred successfully we have a valid invocation.
@@ -104,16 +126,58 @@ namespace LMirman.VespaIO
 				{
 					return InvokeResult.ErrorRequiresCheats;
 				}
-				else
+				else if (invocationType == Command.InvocationType.Method)
 				{
 					methodInfo.Invoke(null, methodParameters);
 					return InvokeResult.Success;
+				}
+				else if (invocationType == Command.InvocationType.Property)
+				{
+					InvokeProperty(console);
+					return InvokeResult.Success;
+				}
+				else
+				{
+					return InvokeResult.ErrorException;
 				}
 			}
 			catch (Exception e)
 			{
 				exception = e.InnerException ?? e;
 				return InvokeResult.ErrorException;
+			}
+		}
+
+		private void InvokeProperty(Console console)
+		{
+			object prevValue = propertyInfo.CanRead ? propertyInfo.GetValue(null) : string.Empty;
+			if (!propertyInfo.CanWrite)
+			{
+				console.Log($"{propertyInfo.Name}: {prevValue} [READONLY]");
+				return;
+			}
+			else if (arguments.Length == 0 && !propertyInfo.CanRead)
+			{
+				console.Log($"Property \"{propertyInfo.Name}\" can only have its value set.", Console.LogStyling.Error);
+				return;
+			}
+			else if (arguments.Length == 0)
+			{
+				console.Log($"{propertyInfo.Name}: {prevValue}");
+				return;
+			}
+
+			string inputValue = arguments[0].stringValue.value;
+			TypeConverter typeConverter = TypeDescriptor.GetConverter(propertyInfo.PropertyType);
+			if (typeConverter.IsValid(inputValue))
+			{
+				object newValue = typeConverter.ConvertFrom(inputValue);
+				propertyInfo.SetValue(null, newValue);
+				console.Log($"{propertyInfo.Name}: {prevValue} -> {newValue}");
+			}
+			else
+			{
+				console.Log($"Cannot set value of property \"{propertyInfo.Name}\" ({propertyInfo.PropertyType}) to \"{inputValue}\"", Console.LogStyling.Error);
 			}
 		}
 
@@ -145,7 +209,11 @@ namespace LMirman.VespaIO
 			/// <summary>
 			/// The invocation is invalid because there was no method possible for the parameters provided.
 			/// </summary>
-			ErrorNoMethodForParameters
+			ErrorNoMethodForParameters,
+			/// <summary>
+			/// The invocation is invalid because there was no valid property.
+			/// </summary>
+			ErrorInvalidProperty
 		}
 
 		/// <summary>

@@ -54,7 +54,11 @@ namespace LMirman.VespaIO
 		[Pure]
 		private string MakeLiteralIfNecessary(string word)
 		{
-			if (!word.Contains(" ") || word.StartsWith("\""))
+			if (word == null)
+			{
+				return string.Empty;
+			}
+			else if (!word.Contains(" ") || word.StartsWith("\""))
 			{
 				return word;
 			}

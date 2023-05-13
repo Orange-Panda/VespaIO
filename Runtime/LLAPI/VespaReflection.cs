@@ -8,21 +8,47 @@ namespace LMirman.VespaIO
 	public static class VespaReflection
 	{
 		public const BindingFlags InstanceMethodBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
+		public const BindingFlags InstancePropertyBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 		public const BindingFlags StaticMethodBindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
+		public const BindingFlags StaticPropertyBindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 
-		public static List<CommandMethod> GetCommandMethodFromClasses<T>(List<Type> classes, BindingFlags bindingFlags) where T : Attribute, ICommandProperties
+		public static List<CommandDefinition> GetCommandDefinitionsFromClasses<T>(List<Type> classes, BindingFlags methodFlags, BindingFlags propertyFlags)
+			where T : Attribute, ICommandProperties
 		{
-			List<CommandMethod> commands = new List<CommandMethod>();
+			List<CommandDefinition> commands = new List<CommandDefinition>();
 			foreach (Type type in classes)
 			{
-				foreach (MethodInfo method in type.GetMethods(bindingFlags))
+				foreach (MethodInfo method in type.GetMethods(methodFlags))
 				{
 					object[] customAttributes = method.GetCustomAttributes(typeof(T), false);
 					foreach (object customAttribute in customAttributes)
 					{
 						if (customAttribute is T attribute)
 						{
-							commands.Add(new CommandMethod(attribute, method));
+							commands.Add(new CommandDefinition(attribute, method, BindingFlags.Static | BindingFlags.InvokeMethod));
+						}
+					}
+				}
+
+				foreach (PropertyInfo property in type.GetProperties(propertyFlags))
+				{
+					object[] customAttributes = property.GetCustomAttributes(typeof(T), false);
+					foreach (object customAttribute in customAttributes)
+					{
+						if (customAttribute is T attribute)
+						{
+							BindingFlags bindingFlags = BindingFlags.Static;
+							if (property.CanRead)
+							{
+								bindingFlags |= BindingFlags.GetProperty;
+							}
+
+							if (property.CanWrite)
+							{
+								bindingFlags |= BindingFlags.SetProperty;
+							}
+
+							commands.Add(new CommandDefinition(attribute, property, bindingFlags));
 						}
 					}
 				}
