@@ -120,8 +120,9 @@ namespace LMirman.VespaIO
 			}
 
 			string relevantWord = autofillBuilder.GetRelevantWordText().CleanseKey();
-			foreach (string commandKey in Commands.commandSet.Keys)
+			foreach (Command command in Commands.commandSet.GetPublicCommands())
 			{
+				string commandKey = command.Key;
 				if (commandKey.StartsWith(relevantWord) && !autofillBuilder.Exclusions.Contains(commandKey))
 				{
 					return autofillBuilder.CreateCompletionAutofill(commandKey);
@@ -133,27 +134,23 @@ namespace LMirman.VespaIO
 
 		private static int CountPages()
 		{
-			List<Command> commands = new List<Command>();
-			foreach (Command command in Commands.commandSet.AllCommands)
+			int count = 0;
+			foreach (Command unused in Commands.commandSet.GetPublicCommands(DevConsole.console.CheatsEnabled))
 			{
-				if (!commands.Contains(command) && !IsCommandHidden(command))
-				{
-					commands.Add(command);
-				}
+				count++;
 			}
 
-			return Mathf.CeilToInt((float)commands.Count / HelpPageLength);
+			return Mathf.CeilToInt((float)count / HelpPageLength);
 		}
 
 		private static void LogPage(int page = 1)
 		{
 			int pageCount = CountPages();
 			page = Mathf.Clamp(page, 1, pageCount);
-			List<Command> loggedCommands = new List<Command>();
 			int remaining = HelpPageLength;
 			int ignore = (page - 1) * HelpPageLength;
 			DevConsole.Log($"========== Help: Page {page}/{pageCount} ==========");
-			foreach (Command command in Commands.commandSet.AllCommands)
+			foreach (Command command in Commands.commandSet.GetPublicCommands(DevConsole.console.CheatsEnabled))
 			{
 				//Stop if we have print out enough commands
 				if (remaining <= 0)
@@ -161,18 +158,14 @@ namespace LMirman.VespaIO
 					break;
 				}
 
-				if (!loggedCommands.Contains(command) && !IsCommandHidden(command))
+				if (ignore <= 0)
 				{
-					loggedCommands.Add(command);
-
-					if (ignore > 0)
-					{
-						ignore--;
-					}
-					else if (PrintLookup(command))
-					{
-						remaining--;
-					}
+					PrintLookup(command);
+					remaining--;
+				}
+				else
+				{
+					ignore--;
 				}
 			}
 
@@ -183,35 +176,18 @@ namespace LMirman.VespaIO
 		private static void PrintMatching(string key)
 		{
 			DevConsole.Log($"========== Commands Containing \"{key}\" ==========");
-			List<Command> commands = new List<Command>();
-			foreach (Command command in Commands.commandSet.AllCommands)
+			foreach (Command command in Commands.commandSet.GetPublicCommands(DevConsole.console.CheatsEnabled))
 			{
-				if ((command.Key.Contains(key) || command.Name.ToLower().Contains(key)) && !commands.Contains(command))
+				if (command.Key.Contains(key.CleanseKey()) || command.Name.ToLower().Contains(key.ToLower()))
 				{
-					commands.Add(command);
+					PrintLookup(command);
 				}
 			}
-
-			foreach (Command command in commands)
-			{
-				PrintLookup(command);
-			}
 		}
 
-		private static bool PrintLookup(Command command)
+		private static void PrintLookup(Command command)
 		{
-			if (IsCommandHidden(command))
-			{
-				return false;
-			}
-
-			DevConsole.Log(!string.IsNullOrWhiteSpace(command.Description) ? $"= {command.Name} \"{command.Key}\"\n  - {command.Description}" : $"= {command.Name} \"{command.Key}\"");
-			return true;
-		}
-
-		private static bool IsCommandHidden(Command command)
-		{
-			return command.Hidden || (command.Cheat && !DevConsole.console.CheatsEnabled);
+			DevConsole.Log($"= {command.Name} \"{command.Key}\"{(!string.IsNullOrWhiteSpace(command.Description) ? $"\n  - {command.Description}" : string.Empty)}");
 		}
 		#endregion
 

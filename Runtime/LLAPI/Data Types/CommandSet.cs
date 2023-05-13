@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -12,10 +13,7 @@ namespace LMirman.VespaIO
 		private readonly CommandPropertiesComparer commandPropertiesComparer = new CommandPropertiesComparer();
 		private bool sortDirty;
 
-		/// <summary>
-		/// Returns a sorted list of commands based on its <see cref="Command.ManualPriority"/>
-		/// </summary>
-		public IEnumerable<Command> AllCommands
+		private List<Command> Commands
 		{
 			get
 			{
@@ -33,9 +31,25 @@ namespace LMirman.VespaIO
 				return commands;
 			}
 		}
+		/// <summary>
+		/// Returns a sorted list of every single command based on its <see cref="Command.ManualPriority"/>.
+		/// </summary>
+		/// <remarks>
+		/// This includes cheat and hidden commands.
+		/// </remarks>
+		public IEnumerable<Command> AllCommands => Commands;
+		/// <remarks>
+		/// This includes cheat and hidden commands.
+		/// </remarks>
 		public IEnumerable<KeyValuePair<string, Command>> AllDefinitions => lookup;
 
+		/// <remarks>
+		/// This includes cheat and hidden commands.
+		/// </remarks>
 		public Dictionary<string, Command>.KeyCollection Keys => lookup.Keys;
+		/// <remarks>
+		/// This includes cheat and hidden commands.
+		/// </remarks>
 		public Dictionary<string, Command>.ValueCollection Values => lookup.Values;
 
 		public bool ContainsCommand(string key)
@@ -105,8 +119,74 @@ namespace LMirman.VespaIO
 			lookup.Clear();
 			sortDirty = true;
 		}
-		
-		// TODO: Make an IEnumerable here and in AliasSet that gets only valid (cheat sensitive) and non-hidden commands from a string query.
-		// TODO: Also implement using the IEnumerable in places that current naively iterate over the entire set.
+
+		public IEnumerable<Command> GetPublicCommands(bool includeCheats = false)
+		{
+			return new PublicCommandEnumerable(Commands, includeCheats);
+		}
+
+		public class PublicCommandEnumerable : IEnumerable<Command>
+		{
+			private PublicCommandEnumerator enumerator;
+			private readonly List<Command> commands;
+			private readonly bool includeCheats;
+
+			public PublicCommandEnumerable(List<Command> commands, bool includeCheats)
+			{
+				this.commands = commands;
+				this.includeCheats = includeCheats;
+			}
+
+			public IEnumerator<Command> GetEnumerator()
+			{
+				return new PublicCommandEnumerator(commands, includeCheats);
+			}
+
+			IEnumerator IEnumerable.GetEnumerator()
+			{
+				return GetEnumerator();
+			}
+		}
+
+		public class PublicCommandEnumerator : IEnumerator<Command>
+		{
+			private readonly List<Command> commands;
+			private readonly bool includeCheats;
+			private int currentIndex;
+			private Command currentCommand;
+
+			public Command Current => currentCommand;
+			object IEnumerator.Current => Current;
+
+			public PublicCommandEnumerator(List<Command> commands, bool includeCheats)
+			{
+				this.commands = commands;
+				this.includeCheats = includeCheats;
+				currentIndex = -1;
+				currentCommand = null;
+			}
+
+			public bool MoveNext()
+			{
+				while (++currentIndex < commands.Count)
+				{
+					Command evaluateCommand = commands[currentIndex];
+					if (!evaluateCommand.Hidden && (includeCheats || !evaluateCommand.Cheat))
+					{
+						currentCommand = evaluateCommand;
+						return true;
+					}
+				}
+
+				return false;
+			}
+
+			public void Reset()
+			{
+				currentIndex = -1;
+			}
+
+			public void Dispose() { }
+		}
 	}
 }

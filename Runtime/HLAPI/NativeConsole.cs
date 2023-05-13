@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace LMirman.VespaIO
 {
@@ -48,7 +49,7 @@ namespace LMirman.VespaIO
 
 		private void UpdateNextAutofill()
 		{
-			NextAutofill = GetAutofillValue(virtualText, autofillExclusions);
+			NextAutofill = GetAutofillValue(virtualText, autofillExclusions, Application.isEditor && NativeSettings.Config.editorAutoEnableCheats);
 		}
 
 		public bool ApplyNextAutofill(out string newInputValue)

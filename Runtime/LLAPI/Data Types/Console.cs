@@ -269,7 +269,7 @@ namespace LMirman.VespaIO
 		private static readonly AutofillValue DefaultAutofill = new AutofillValue("help", 0, 0);
 		private readonly AutofillBuilder autofillBuilder = new AutofillBuilder();
 
-		public AutofillValue GetAutofillValue(string input, HashSet<string> autofillExclusions)
+		public AutofillValue GetAutofillValue(string input, HashSet<string> autofillExclusions, bool includeCheats = false)
 		{
 			if (string.IsNullOrEmpty(input))
 			{
@@ -309,8 +309,9 @@ namespace LMirman.VespaIO
 					}
 				}
 
-				foreach (string commandKey in CommandSet.Keys)
+				foreach (Command command in CommandSet.GetPublicCommands(CheatsEnabled || includeCheats))
 				{
+					string commandKey = command.Key;
 					if (commandKey.StartsWith(inputCommand) && !autofillExclusions.Contains(commandKey))
 					{
 						return new AutofillValue(commandKey, inputCommand.Length, commandStartIndex + word.startIndex);
