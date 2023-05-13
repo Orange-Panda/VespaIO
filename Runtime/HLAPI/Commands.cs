@@ -42,7 +42,7 @@ namespace LMirman.VespaIO
 			commandSet.UnregisterAllCommands();
 			Assembly[] assemblies = VespaReflection.GetAssembliesFromDomain(AppDomain.CurrentDomain, GetRegexFilter(NativeSettings.Config.assemblyFilter));
 			List<Type> classes = VespaReflection.GetClassesFromAssemblies(assemblies);
-			List<CommandDefinition> staticCommands = VespaReflection.GetCommandDefinitionsFromClasses<VespaCommandAttribute>(classes, VespaReflection.StaticMethodBindingFlags, VespaReflection.StaticPropertyBindingFlags);
+			List<CommandDefinition> staticCommands = VespaReflection.GetCommandDefinitionsFromClasses<VespaCommandAttribute>(classes, VespaReflection.CommandBindingFlags);
 			foreach (CommandDefinition commandDefinition in staticCommands)
 			{
 				if (commandDefinition.bindingFlags.HasFlag(BindingFlags.InvokeMethod))
@@ -95,18 +95,6 @@ namespace LMirman.VespaIO
 				}
 			}
 
-#if UNITY_EDITOR // Only done in editor since the end user should not care about this message and not checking this dramatically improves performance.
-			if (NativeSettings.Config.warnForNonstaticMethods)
-			{
-				List<CommandDefinition> instancedMethods = VespaReflection.GetCommandDefinitionsFromClasses<VespaCommandAttribute>(classes, VespaReflection.InstanceMethodBindingFlags, VespaReflection.InstancePropertyBindingFlags);
-				foreach (CommandDefinition commandDefinition in instancedMethods)
-				{
-					string message =
-						$"<color=red>ERROR:</color> Command attribute with key {commandDefinition.properties.Key} is a applied to non-static method {commandDefinition.methodInfo.Name}, which is unsupported. The method will not be added to the console.";
-					DevConsole.Log(message);
-				}
-			}
-#endif
 			stopwatch.Stop();
 			DevConsole.Log($"<color=green>Command generation completed in {stopwatch.Elapsed.TotalSeconds:F3}s</color>");
 		}

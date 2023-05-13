@@ -7,37 +7,46 @@ namespace LMirman.VespaIO
 {
 	public static class VespaReflection
 	{
-		public const BindingFlags InstanceMethodBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
-		public const BindingFlags InstancePropertyBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 		public const BindingFlags StaticMethodBindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
-		public const BindingFlags StaticPropertyBindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+		public const BindingFlags CommandBindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
 
-		public static List<CommandDefinition> GetCommandDefinitionsFromClasses<T>(List<Type> classes, BindingFlags methodFlags, BindingFlags propertyFlags)
+		public static List<CommandDefinition> GetCommandDefinitionsFromClasses<T>(List<Type> classes, BindingFlags searchFlags)
 			where T : Attribute, ICommandProperties
 		{
 			List<CommandDefinition> commands = new List<CommandDefinition>();
 			foreach (Type type in classes)
 			{
-				foreach (MethodInfo method in type.GetMethods(methodFlags))
+				foreach (MethodInfo method in type.GetMethods(searchFlags))
 				{
 					object[] customAttributes = method.GetCustomAttributes(typeof(T), false);
 					foreach (object customAttribute in customAttributes)
 					{
 						if (customAttribute is T attribute)
 						{
-							commands.Add(new CommandDefinition(attribute, method, BindingFlags.Static | BindingFlags.InvokeMethod));
+							BindingFlags bindingFlags = BindingFlags.InvokeMethod;
+							if (method.IsStatic)
+							{
+								bindingFlags |= BindingFlags.Static;
+							}
+							
+							commands.Add(new CommandDefinition(attribute, method, bindingFlags));
 						}
 					}
 				}
 
-				foreach (PropertyInfo property in type.GetProperties(propertyFlags))
+				foreach (PropertyInfo property in type.GetProperties(searchFlags))
 				{
 					object[] customAttributes = property.GetCustomAttributes(typeof(T), false);
 					foreach (object customAttribute in customAttributes)
 					{
 						if (customAttribute is T attribute)
 						{
-							BindingFlags bindingFlags = BindingFlags.Static;
+							BindingFlags bindingFlags = BindingFlags.Default;
+							if (property.GetAccessors()[0].IsStatic)
+							{
+								bindingFlags |= BindingFlags.Static;
+							}
+							
 							if (property.CanRead)
 							{
 								bindingFlags |= BindingFlags.GetProperty;

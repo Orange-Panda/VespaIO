@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 
 namespace LMirman.VespaIO
 {
@@ -118,6 +119,12 @@ namespace LMirman.VespaIO
 					break;
 				case Invocation.ValidState.ErrorInvalidProperty:
 					Log("There was no target property valid for command.", LogStyling.Error);
+					break;
+				case Invocation.ValidState.ErrorNoInstanceTarget:
+					Log("There was no target provided for instance command.", LogStyling.Error);
+					break;
+				case Invocation.ValidState.ErrorInstanceIsNotUnityEngineObject:
+					Log("The instance command can never be found because the declaring type does not inherit from UnityEngine.Object", LogStyling.Error);
 					break;
 				default:
 					throw new ArgumentOutOfRangeException();
@@ -283,30 +290,31 @@ namespace LMirman.VespaIO
 				return DefaultAutofill;
 			}
 
-			List<string> commands = VespaFunctions.SplitStringBySemicolon(input, true, true);
-			if (commands.Count == 0)
+			List<string> statements = VespaFunctions.SplitStringBySemicolon(input, true, true);
+			if (statements.Count == 0)
 			{
 				return DefaultAutofill;
 			}
 
-			string lastCommand = commands[commands.Count - 1];
+			string lastStatement = statements[statements.Count - 1];
 			int commandStartIndex = 0;
-			for (int i = 0; i < commands.Count - 1; i++)
+			for (int i = 0; i < statements.Count - 1; i++)
 			{
-				commandStartIndex += commands[i].Length;
+				commandStartIndex += statements[i].Length;
 			}
 
-			List<Word> words = VespaFunctions.GetWordsFromString(lastCommand);
+			List<Word> sanitizedWords = VespaFunctions.GetWordsFromString(lastStatement);
+			List<Word> pureWords = VespaFunctions.GetWordsFromString(lastStatement, false);
 
 			// Don't autofill help on commands that aren't the first one.
-			if (words.Count == 0)
+			if (sanitizedWords.Count == 0)
 			{
 				return null;
 			}
 			// Autofill commands or aliases on first word
-			else if (words.Count == 1 && !lastCommand.EndsWith(" "))
+			else if (sanitizedWords.Count == 1 && !lastStatement.EndsWith(" "))
 			{
-				Word word = words[0];
+				Word word = sanitizedWords[0];
 				string inputCommand = word.text.CleanseKey();
 				foreach (string aliasKey in AliasSet.Keys)
 				{
@@ -325,15 +333,64 @@ namespace LMirman.VespaIO
 					}
 				}
 			}
-			else if (words.Count > 0 && CommandSet.TryGetCommand(words[0].text.CleanseKey(), out Command foundCommand) && foundCommand.AutofillMethod != null)
+			else if (sanitizedWords.Count == 0 || !CommandSet.TryGetCommand(sanitizedWords[0].text.CleanseKey(), out Command foundCommand))
 			{
-				Word lastWord = words[words.Count - 1];
-				bool isNewWordRelevant = lastCommand.EndsWith(" ") && !lastWord.context.HasFlag(Word.Context.IsInOpenLiteral);
-				autofillBuilder.Words = words;
-				autofillBuilder.RelevantWordIndex = isNewWordRelevant ? words.Count : words.Count - 1;
-				autofillBuilder.RelevantWordCharIndex = isNewWordRelevant ? commandStartIndex + lastWord.startIndex + lastWord.text.Length + 1 : commandStartIndex + lastWord.startIndex;
+				return null;
+			}
+			else 	
+			{
+				Word lastWord = sanitizedWords[sanitizedWords.Count - 1];
+				Word pureLastWord = pureWords[pureWords.Count - 1];
+				bool isNewWordRelevant = lastStatement.EndsWith(" ") && !lastWord.context.HasFlag(Word.Context.IsInOpenLiteral);
+				autofillBuilder.Words = sanitizedWords;
+				autofillBuilder.RelevantWordIndex = isNewWordRelevant ? sanitizedWords.Count : sanitizedWords.Count - 1;
+				autofillBuilder.RelevantParameterIndex = !foundCommand.IsStatic ? autofillBuilder.RelevantWordIndex - 2 : autofillBuilder.RelevantWordIndex - 1;
+				autofillBuilder.RelevantWordCharIndex = isNewWordRelevant ? commandStartIndex + pureLastWord.startIndex + pureLastWord.text.Length + 1 : commandStartIndex + pureLastWord.startIndex;
 				autofillBuilder.Exclusions = autofillExclusions;
-				return foundCommand.AutofillMethod.Invoke(autofillBuilder);
+				if (!foundCommand.IsStatic && sanitizedWords.Count >= 2)
+				{
+					autofillBuilder.InstanceTarget = VespaFunctions.GetInstanceTarget(sanitizedWords[1].text, foundCommand.GetDeclaringType());
+				}
+				else
+				{
+					autofillBuilder.InstanceTarget = null;
+				}
+				
+				if (!foundCommand.IsStatic && (sanitizedWords.Count == 1 || (sanitizedWords.Count == 2 && !isNewWordRelevant)))
+				{
+					return GetInstanceAutofillValue(autofillBuilder, foundCommand);
+				}
+				else if (foundCommand.AutofillMethod != null)
+				{
+					try
+					{
+						return foundCommand.AutofillMethod.Invoke(autofillBuilder);
+					}
+					catch (Exception e)
+					{
+						Debug.LogException(e);
+						return null;
+					}
+				}
+			}
+
+			return null;
+		}
+
+		private static AutofillValue GetInstanceAutofillValue(AutofillBuilder autofillBuilder, Command command)
+		{
+			string searchPhrase = autofillBuilder.GetRelevantWordText();
+			Type declaringType = command.GetDeclaringType();
+			if (declaringType.IsSubclassOf(typeof(UnityEngine.Object)))
+			{
+				UnityEngine.Object[] foundObjects = UnityEngine.Object.FindObjectsOfType(declaringType);
+				foreach (UnityEngine.Object foundObject in foundObjects)
+				{
+					if (foundObject.name.StartsWith(searchPhrase, StringComparison.CurrentCultureIgnoreCase) && !autofillBuilder.Exclusions.Contains(foundObject.name))
+					{
+						return autofillBuilder.CreateOverwriteAutofill(foundObject.name);
+					}
+				}
 			}
 
 			return null;

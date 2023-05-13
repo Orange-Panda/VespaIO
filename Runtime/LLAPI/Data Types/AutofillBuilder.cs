@@ -10,9 +10,11 @@ namespace LMirman.VespaIO
 	public class AutofillBuilder
 	{
 		public HashSet<string> Exclusions { get; internal set; }
+		public int RelevantParameterIndex { get; internal set; }
 		public int RelevantWordIndex { get; internal set; }
 		public int RelevantWordCharIndex { get; internal set; }
 		public List<Word> Words { get; internal set; }
+		public UnityEngine.Object InstanceTarget { get; internal set; }
 
 		public string GetRelevantWordText()
 		{

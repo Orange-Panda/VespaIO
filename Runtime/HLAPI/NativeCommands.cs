@@ -67,7 +67,7 @@ namespace LMirman.VespaIO
 				}
 			}
 			
-			if (autofillBuilder.RelevantWordIndex != 1)
+			if (autofillBuilder.RelevantParameterIndex != 0)
 			{
 				return null;
 			}
@@ -144,7 +144,7 @@ namespace LMirman.VespaIO
 		[CommandAutofill("help")]
 		private static AutofillValue GetHelpAutofillValue(AutofillBuilder autofillBuilder)
 		{
-			if (autofillBuilder.RelevantWordIndex != 1)
+			if (autofillBuilder.RelevantParameterIndex != 0)
 			{
 				return null;
 			}
@@ -259,7 +259,7 @@ namespace LMirman.VespaIO
 		[CommandAutofill("alias_delete")]
 		private static AutofillValue GetAliasAutofillValue(AutofillBuilder autofillBuilder)
 		{
-			if (autofillBuilder.RelevantWordIndex != 1)
+			if (autofillBuilder.RelevantParameterIndex != 0)
 			{
 				return null;
 			}

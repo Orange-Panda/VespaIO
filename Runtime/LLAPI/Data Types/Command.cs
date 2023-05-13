@@ -29,6 +29,7 @@ namespace LMirman.VespaIO
 		/// </remarks>
 		public string Guide { get; private set; }
 		public InvocationType InvokeType { get; private set; }
+		public bool IsStatic { get; private set; }
 
 		// ReSharper disable once InconsistentNaming
 		/// <inheritdoc cref="ICommandProperties.Key"/>
@@ -145,11 +146,19 @@ namespace LMirman.VespaIO
 			{
 				AutofillMethod = delegate(AutofillBuilder builder)
 				{
-					return builder.CreateOverwriteAutofill(propertyInfo.GetMethod.Invoke(null, new object[] { })?.ToString());
+					try
+					{
+						return builder.CreateOverwriteAutofill(propertyInfo.GetMethod.Invoke(builder.InstanceTarget, new object[] { })?.ToString());
+					}
+					catch
+					{
+						return null;
+					}
 				};
 			}
 
 			InvokeType = InvocationType.Property;
+			IsStatic = propertyInfo.GetAccessors()[0].IsStatic;
 			UpdateGuide();
 		}
 
@@ -166,6 +175,7 @@ namespace LMirman.VespaIO
 
 			InvokeType = InvocationType.Method;
 			methods.Add(method);
+			IsStatic = method.IsStatic;
 			UpdateGuide();
 		}
 
@@ -311,6 +321,19 @@ namespace LMirman.VespaIO
 			{
 				property = null;
 				return false;
+			}
+		}
+
+		public Type GetDeclaringType()
+		{
+			switch (InvokeType)
+			{
+				case InvocationType.Method:
+					return methods[0].DeclaringType;
+				case InvocationType.Property:
+					return propertyInfo.DeclaringType;
+				default:
+					throw new ArgumentOutOfRangeException();
 			}
 		}
 

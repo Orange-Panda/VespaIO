@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace LMirman.VespaIO
 {
@@ -24,6 +26,7 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public readonly Command command;
 
+		private readonly object targetObject;
 		private readonly Command.InvocationType invocationType;
 		private readonly PropertyInfo propertyInfo;
 		private readonly MethodInfo methodInfo;
@@ -57,6 +60,13 @@ namespace LMirman.VespaIO
 				// The input key is always the first word.
 				inputKey = words[0].text.CleanseKey();
 
+				// See if there is a valid command for this invocation
+				if (!commandSet.TryGetCommand(inputKey, out command))
+				{
+					validState = ValidState.ErrorNoCommandFound;
+					return;
+				}
+
 				// Assemble an array of Arguments from the input.
 				// We reuse a static readonly list to minimize garbage collection.
 				ArgumentList.Clear();
@@ -64,16 +74,38 @@ namespace LMirman.VespaIO
 				{
 					ArgumentList.Add(new Argument(words[i]));
 				}
-
-				arguments = ArgumentList.ToArray();
-				ArgumentList.Clear();
-
-				// See if there is a valid command for this invocation
-				if (!commandSet.TryGetCommand(inputKey, out command))
+				
+				// Find target object
+				if (!command.IsStatic && ArgumentList.Count == 0)
 				{
-					validState = ValidState.ErrorNoCommandFound;
+					validState = ValidState.ErrorNoInstanceTarget;
 					return;
 				}
+				else if (!command.IsStatic)
+				{
+					Type declaringType = command.GetDeclaringType();
+					string target = ArgumentList[0].stringValue.value;
+					ArgumentList.RemoveAt(0);
+					targetObject = VespaFunctions.GetInstanceTarget(target, declaringType);
+					
+					if (!declaringType.IsSubclassOf(typeof(Object)))
+					{
+						validState = ValidState.ErrorInstanceIsNotUnityEngineObject;
+						return;
+					}
+					else if (targetObject == null)
+					{
+						validState = ValidState.ErrorNoInstanceTarget;
+						return;
+					}
+				}
+				else if (command.IsStatic)
+				{
+					targetObject = null;
+				}
+				
+				arguments = ArgumentList.ToArray();
+				ArgumentList.Clear();
 
 				// See if there is a valid method for this invocation
 				switch (command.InvokeType)
@@ -128,7 +160,7 @@ namespace LMirman.VespaIO
 				}
 				else if (invocationType == Command.InvocationType.Method)
 				{
-					methodInfo.Invoke(null, methodParameters);
+					methodInfo.Invoke(targetObject, methodParameters);
 					return InvokeResult.Success;
 				}
 				else if (invocationType == Command.InvocationType.Property)
@@ -150,7 +182,7 @@ namespace LMirman.VespaIO
 
 		private void InvokeProperty(Console console)
 		{
-			object prevValue = propertyInfo.CanRead ? propertyInfo.GetValue(null) : string.Empty;
+			object prevValue = propertyInfo.CanRead ? propertyInfo.GetValue(targetObject) : string.Empty;
 			if (!propertyInfo.CanWrite)
 			{
 				console.Log($"{propertyInfo.Name}: {prevValue} [READONLY]");
@@ -172,7 +204,7 @@ namespace LMirman.VespaIO
 			if (typeConverter.IsValid(inputValue))
 			{
 				object newValue = typeConverter.ConvertFrom(inputValue);
-				propertyInfo.SetValue(null, newValue);
+				propertyInfo.SetValue(targetObject, newValue);
 				console.Log($"{propertyInfo.Name}: {prevValue} -> {newValue}");
 			}
 			else
@@ -213,7 +245,15 @@ namespace LMirman.VespaIO
 			/// <summary>
 			/// The invocation is invalid because there was no valid property.
 			/// </summary>
-			ErrorInvalidProperty
+			ErrorInvalidProperty,
+			/// <summary>
+			/// The invocation is invalid because there was no target for the instance invocation.
+			/// </summary>
+			ErrorNoInstanceTarget,
+			/// <summary>
+			/// The invocation is invalid because the declaring type for an instance command does not inherit from MonoBehaviour
+			/// </summary>
+			ErrorInstanceIsNotUnityEngineObject
 		}
 
 		/// <summary>

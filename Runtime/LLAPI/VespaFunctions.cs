@@ -1,7 +1,9 @@
 using JetBrains.Annotations;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
+using Object = UnityEngine.Object;
 
 namespace LMirman.VespaIO
 {
@@ -140,7 +142,7 @@ namespace LMirman.VespaIO
 			{
 				if (WordStringBuilder.Length > 0)
 				{
-					string substring = WordStringBuilder.ToString().Trim(' ');
+					string substring = WordStringBuilder.ToString().TrimStart(' ');
 					if (!string.IsNullOrWhiteSpace(substring))
 					{
 						output.Add(substring);
@@ -208,6 +210,25 @@ namespace LMirman.VespaIO
 				isLiteral = false;
 				WordStringBuilder.Clear();
 			}
+		}
+
+		public static Object GetInstanceTarget(string nameQuery, Type declaringType)
+		{
+			if (!declaringType.IsSubclassOf(typeof(Object)))
+			{
+				return null;
+			}
+			
+			Object[] foundObjects = Object.FindObjectsOfType(declaringType);
+			foreach (Object foundObject in foundObjects)
+			{
+				if (string.Equals(foundObject.name, nameQuery, StringComparison.CurrentCultureIgnoreCase))
+				{
+					return foundObject;
+				}
+			}
+
+			return null;
 		}
 
 		public enum AliasOutcome
