@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
@@ -241,7 +242,7 @@ namespace LMirman.VespaIO
 		/// This <b>does</b> include methods that have less parameters than arguments since such methods can simply not use the extra arguments if they so choose.<br/>
 		/// Always includes specifically the `Argument[]` method
 		/// </remarks>
-		public List<MethodInfo> GetValidMethods(Argument[] arguments)
+		public List<MethodInfo> GetValidMethods(Word[] arguments)
 		{
 			List<MethodInfo> validMethods = new List<MethodInfo>();
 			foreach (MethodInfo method in methods)
@@ -265,7 +266,7 @@ namespace LMirman.VespaIO
 			return validMethods;
 		}
 
-		public bool TryGetMethod(Argument[] arguments, out MethodInfo methodInfo, out object[] methodParameters)
+		public bool TryGetMethod(Word[] arguments, out MethodInfo methodInfo, out object[] methodParameters)
 		{
 			if (InvokeType != InvocationType.Method)
 			{
@@ -310,7 +311,8 @@ namespace LMirman.VespaIO
 						value++;
 					}
 
-					if (!arguments[i].HasValidType(parameterType))
+					TypeConverter typeConverter = TypeDescriptor.GetConverter(parameterType);
+					if (!typeConverter.IsValid(arguments[i].text) || (arguments[i].context.HasFlag(Word.Context.IsLiteral) && parameterType != typeof(string)))
 					{
 						canCastAll = false;
 						break;
@@ -339,7 +341,8 @@ namespace LMirman.VespaIO
 				ParameterInfo[] parameters = bestMethod.GetParameters();
 				for (int i = 0; i < bestMethodArgCount; i++)
 				{
-					methodParameters[i] = i < arguments.Length ? arguments[i].GetValue(parameters[i].ParameterType) : parameters[i].DefaultValue;
+					TypeConverter typeConverter = TypeDescriptor.GetConverter(parameters[i].ParameterType);
+					methodParameters[i] = i < arguments.Length ? typeConverter.ConvertFrom(arguments[i].text) : parameters[i].DefaultValue;
 				}
 
 				methodInfo = bestMethod;
@@ -410,8 +413,7 @@ namespace LMirman.VespaIO
 				ParameterInfo[] parameters = method.GetParameters();
 				foreach (ParameterInfo parameter in parameters)
 				{
-					GuideBuilder.Append(' ');
-					GuideBuilder.Append(TranslateParameter(parameter.ParameterType));
+					GuideBuilder.Append($" [{parameter.ParameterType}]");
 				}
 
 				if (i < methods.Count - 1)
@@ -425,31 +427,7 @@ namespace LMirman.VespaIO
 
 		private static bool GetIsArgumentArrayMethod(ParameterInfo[] parameters)
 		{
-			return parameters.Length == 1 && parameters[0].ParameterType == typeof(Argument[]);
-		}
-
-		private static string TranslateParameter(Type type)
-		{
-			if (type == typeof(int))
-			{
-				return "[INTEGER]";
-			}
-			else if (type == typeof(float))
-			{
-				return "[FLOAT]";
-			}
-			else if (type == typeof(string))
-			{
-				return "[STRING]";
-			}
-			else if (type == typeof(Argument[]))
-			{
-				return "[ARGUMENTS]";
-			}
-			else
-			{
-				return "[INVALID/UNKNOWN]";
-			}
+			return parameters.Length == 1 && parameters[0].ParameterType == typeof(Word[]);
 		}
 
 		public enum InvocationType

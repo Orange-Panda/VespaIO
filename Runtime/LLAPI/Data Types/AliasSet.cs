@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace LMirman.VespaIO
 {
+	/// <summary>
+	/// Defines a set of aliases that function as shortcuts for inputting longer commands into the console.
+	/// </summary>
 	[PublicAPI]
 	public class AliasSet
 	{

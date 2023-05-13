@@ -4,15 +4,19 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [PENDING] - PENDING
+## [2.0.0] - PENDING
 
 ### Breaking Changes
 
-- The `LongString` type has been completely removed in favor of using quotation blocks around command input.
-	- This means that previous LongString methods now take a string input and you are required to put quotations around your phrase.
-	- Alternatively you can use `Argument[]` to handle a dynamic amount of commands.
-- `ManualPriority` for `StaticCommand` is now of type `int` instead of `bool` enabling finer tuning of the sorting of the help manual.
-	- This is only a breaking change if you are currently setting the ManualPriority on any of your own commands.
+- The entire asset has been rewritten from the ground up so consider your previous implementations completely broken with this major version.
+- The codebase has been restructured as follows:
+	- Part of the codebase has been separated into a `LLAPI` which handles a lot of the heavy lifiting of the asset
+		- If you do not plan to extend console functionality you should amost never need to interact with `LLAPI`, but it is available if that is of interest to your project.
+	- Some code and assets that were related to the default implementation such as `DevConsoleRunner` have been moved to `Samples`
+		- If you were using any 1.X version you likely need to import this default console implementation.
+	- The rest of the codebase lies within the `HLAPI` which provides the same intuitive console implemntation from 1.X versions
+		- Because of this separation of `LLAPI` from `HLAPI` it is possible to import exclusively the `LLAPI` if you want to write your own console implementation.
+- `ManualPriority` for `Commands` are now of type `int` instead of `bool` enabling finer tuning of the sorting of the help manual.
 	- Native commands will only use the inclusive range of `-100-100` so if you want to guarantee your command shows before or after native commands consider this range.
 - By default: Assemblies that are incredibly unlikely to contain commands are no longer included in the command search
 	- This specifically ignores assemblies that **begin** with `unity`, `system`, `mscorlib`, `mono`, `log4net`, `newtonsoft`, `nunit`, `jetbrains` (Case insensitive).
@@ -29,22 +33,32 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 	- You can begin a new command definition by using the semicolon character
 		- You can escape the semicolon character using `\;` to ignore this behavior
 		- Semicolons within quotes will not begin a new command.
-- Almost the entirety of the internal architecture has been rewritten so there are some behavioral differences that are so sweeping it will be overwhelming to throw them at you here.
-	- Simply put a good chunk of the codebase has been separated into a `LLAPI` that handles a lot of the heavy lifiting of the asset
-		- If you do not plan to extend console functionality you should amost never need to interact with `LLAPI`, but it is available if that is of interest to your project.
-	- Some code and assets that were related to the default implementation such as `DevConsoleRunner` have been moved to `Samples`
-		- If you were using any 1.X version you likely need to import this default console implementation.
-	- The rest of the codebase lies within the `HLAPI` which provides the same intuitive console implemntation from 1.X versions
-		- Because of this separation of `LLAPI` from `HLAPI` it is possible to import exclusively the `LLAPI` if you want to write your own console implementation.
+- `StaticCommand` is now `VespaCommand` since it now supports non-static methods and more. (see more below)
 
 ### Added
 
 - Added public methods to the `Aliases` class to add support for adding, removing, and viewing alias definitions within your own code.
 - Added public methods to the `Commands` class to add support for adding, removing, and viewing command definitions within your own code.
-- Added various types to more clearly communicate command syntax and invocations.
-- Added the JetBrain's `[MeansImplicitUse]` attribute to the `[StaticCommand]` attribute to automatically supress `Method never used` intellisense warnings for commands.
-- Added support for `Argument[]` commands which can dynamically handle any amount of parameters.
+- Added various low level types to more clearly communicate command syntax and invocations.
+- Added the JetBrain's `[MeansImplicitUse]` attribute to attributes to automatically supress `Method never used` intellisense warnings for commands.
+- Added support for `Word[]` commands which can dynamically handle any amount of parameters.
 	- If this parameter is ever present it will *always* be invoked.
+- Added support for autofilling parameters on commands
+- Added support for command definitions on Fields and Properties. 
+	- Does not require writing any methods to function!
+	- Supports autofill for the get value and can set value if not readonly.
+- Added support for instanced commands on any class that inherits from `UnityEngine.Object`
+	- The first parameter will be used to specify the name of the object to be targeted.
+	- Only one Object can be the target of a method. The first object found will be used.
+	- This works for methods, fields, and properties.
+
+### Removed
+
+- The `LongString` type has been completely removed in favor of using quotation blocks around command input.
+	- This means that previous LongString methods now take a string input and you are required to put quotations around your phrase.
+	- Alternatively you can use `Word[]` to handle a dynamic amount of commands.
+- The default `DevConsoleRunner` and its assets have been moved to `Samples`
+	- This requires an import in order to use the console out of the box.
 
 ## [1.2.0] - 2022-10-09
 

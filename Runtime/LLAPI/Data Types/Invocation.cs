@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
-using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace LMirman.VespaIO
@@ -31,10 +30,10 @@ namespace LMirman.VespaIO
 		private readonly PropertyInfo propertyInfo;
 		private readonly FieldInfo fieldInfo;
 		private readonly MethodInfo methodInfo;
-		private readonly Argument[] arguments;
+		private readonly Word[] arguments;
 		private readonly object[] methodParameters;
 
-		private static readonly List<Argument> ArgumentList = new List<Argument>(32);
+		private static readonly List<Word> ArgumentList = new List<Word>(32);
 
 		/// <summary>
 		/// Create an invocation object for a command based on a character string.
@@ -73,7 +72,7 @@ namespace LMirman.VespaIO
 				ArgumentList.Clear();
 				for (int i = 1; i < words.Count; i++)
 				{
-					ArgumentList.Add(new Argument(words[i]));
+					ArgumentList.Add(words[i]);
 				}
 
 				// Find target object
@@ -85,7 +84,7 @@ namespace LMirman.VespaIO
 				else if (!command.IsStatic)
 				{
 					Type declaringType = command.GetDeclaringType();
-					string target = ArgumentList[0].stringValue.value;
+					string target = ArgumentList[0].text;
 					ArgumentList.RemoveAt(0);
 					targetObject = VespaFunctions.GetInstanceTarget(target, declaringType);
 
@@ -212,7 +211,7 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			string inputValue = arguments[0].stringValue.value;
+			string inputValue = arguments[0].text;
 			TypeConverter typeConverter = TypeDescriptor.GetConverter(propertyInfo.PropertyType);
 			if (typeConverter.IsValid(inputValue))
 			{
@@ -240,7 +239,7 @@ namespace LMirman.VespaIO
 				return;
 			}
 
-			string inputValue = arguments[0].stringValue.value;
+			string inputValue = arguments[0].text;
 			TypeConverter typeConverter = TypeDescriptor.GetConverter(fieldInfo.FieldType);
 			if (typeConverter.IsValid(inputValue))
 			{
