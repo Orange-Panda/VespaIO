@@ -9,7 +9,7 @@ namespace LMirman.VespaIO
 	{
 		public const string SettingsPath = "VespaIO/Settings";
 
-		internal static ConsoleSettingsConfig Config { get; private set; }
+		public static ConsoleSettingsConfig Config { get; private set; }
 
 		static NativeSettings()
 		{

@@ -16,8 +16,6 @@ namespace LMirman.VespaIO
 		public bool defaultConsoleEnableStandalone = true;
 		[Tooltip("If a cheat command is used in the editor should cheats automatically be enabled?")]
 		public bool editorAutoEnableCheats;
-		[Tooltip("When should the commands be preloaded into memory? This will take some time depending on the size of your project and will only occur once per play session.")]
-		public DevConsole.PreloadType preloadType = DevConsole.PreloadType.None;
 		[Tooltip("The method by which assemblies are picked for command selection")]
 		public Commands.AssemblyFilter assemblyFilter = Commands.AssemblyFilter.Standard;
 
@@ -49,16 +47,11 @@ namespace LMirman.VespaIO
 		[TextArea(3, 32)]
 		public string welcomeText = "Welcome to the developer console!\nPress the tilde key (` or ~) to return to your game!\nBeware: Use of console commands can dramatically alter the gameplay experience. Use at your own discretion.";
 
-		[Header("Editor")]
-		[Tooltip("When true gives an error message if a non-static method is labeled with the StaticCommand attribute. Disabling this will significantly reduce the amount of time spent generating the command lookup dictionary but will not alert you when a StaticCommand is invalid.")]
-		public bool warnForNonstaticMethods = true;
-
 		public ConsoleSettingsConfig DeepCopy() => new ConsoleSettingsConfig
 		{
 			defaultConsoleEnableEditor = defaultConsoleEnableEditor,
 			defaultConsoleEnableStandalone = defaultConsoleEnableStandalone,
 			editorAutoEnableCheats = editorAutoEnableCheats,
-			preloadType = preloadType,
 			assemblyFilter = assemblyFilter,
 			instantiateConsoleOnLoad = instantiateConsoleOnLoad,
 			consoleResourcePath = consoleResourcePath,
@@ -70,8 +63,7 @@ namespace LMirman.VespaIO
 			closeEmptyConsoleKeycodes = closeEmptyConsoleKeycodes,
 			closeConsoleOnLeftClick = closeConsoleOnLeftClick,
 			printMetadataOnWelcome = printMetadataOnWelcome,
-			welcomeText = welcomeText,
-			warnForNonstaticMethods = warnForNonstaticMethods
+			welcomeText = welcomeText
 		};
 	}
 }

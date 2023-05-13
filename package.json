@@ -17,5 +17,12 @@
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.0.2",
     "com.unity.textmeshpro": "3.0.6"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Developer Console",
+      "description": "Contains the default developer console implementation",
+      "path": "Samples~/Dev Console"
+    }
+  ]
 }
