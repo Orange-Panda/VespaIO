@@ -11,7 +11,7 @@ namespace LMirman.VespaIO
 	/// </remarks>
 	[PublicAPI]
 	[MeansImplicitUse]
-	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true, Inherited = false)]
+	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true, Inherited = false)]
 	public class VespaCommandAttribute : Attribute, ICommandProperties
 	{
 		/// <inheritdoc cref="ICommandProperties.Key"/>

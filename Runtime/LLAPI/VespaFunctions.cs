@@ -203,7 +203,7 @@ namespace LMirman.VespaIO
 					{
 						context |= Word.Context.IsInOpenLiteral;
 					}
-					
+
 					output.Add(new Word(substring, context, wordStartIndex));
 				}
 
@@ -218,7 +218,7 @@ namespace LMirman.VespaIO
 			{
 				return null;
 			}
-			
+
 			Object[] foundObjects = Object.FindObjectsOfType(declaringType);
 			foreach (Object foundObject in foundObjects)
 			{

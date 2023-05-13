@@ -61,6 +61,29 @@ namespace LMirman.VespaIO
 						}
 					}
 				}
+
+				foreach (FieldInfo field in type.GetFields(searchFlags))
+				{
+					object[] customAttributes = field.GetCustomAttributes(typeof(T), false);
+					foreach (object customAttribute in customAttributes)
+					{
+						if (customAttribute is T attribute)
+						{
+							BindingFlags bindingFlags = BindingFlags.GetField;
+							if (field.IsStatic)
+							{
+								bindingFlags |= BindingFlags.Static;
+							}
+
+							if (!field.IsInitOnly)
+							{
+								bindingFlags |= BindingFlags.SetField;
+							}
+
+							commands.Add(new CommandDefinition(attribute, field, bindingFlags));
+						}
+					}
+				}
 			}
 
 			return commands;

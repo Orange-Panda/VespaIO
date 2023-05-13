@@ -8,6 +8,7 @@ namespace LMirman.VespaIO
 		public readonly ICommandProperties properties;
 		public readonly MethodInfo methodInfo;
 		public readonly PropertyInfo propertyInfo;
+		public readonly FieldInfo fieldInfo;
 
 		public CommandDefinition(ICommandProperties properties, MethodInfo methodInfo, BindingFlags bindingFlags)
 		{
@@ -20,6 +21,13 @@ namespace LMirman.VespaIO
 		{
 			this.properties = properties;
 			this.propertyInfo = propertyInfo;
+			this.bindingFlags = bindingFlags;
+		}
+
+		public CommandDefinition(ICommandProperties properties, FieldInfo fieldInfo, BindingFlags bindingFlags)
+		{
+			this.properties = properties;
+			this.fieldInfo = fieldInfo;
 			this.bindingFlags = bindingFlags;
 		}
 	}

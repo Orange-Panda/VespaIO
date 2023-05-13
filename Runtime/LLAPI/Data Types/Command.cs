@@ -58,6 +58,7 @@ namespace LMirman.VespaIO
 		/// </summary>
 		private static readonly StringBuilder GuideBuilder = new StringBuilder();
 
+		private FieldInfo fieldInfo;
 		private PropertyInfo propertyInfo;
 		private readonly List<MethodInfo> methods = new List<MethodInfo>();
 		private readonly string key;
@@ -84,6 +85,13 @@ namespace LMirman.VespaIO
 			key = properties.Key.CleanseKey();
 			SetAttributeProperties(properties);
 			SetPropertyTarget(property);
+		}
+
+		public Command(ICommandProperties properties, FieldInfo field)
+		{
+			key = properties.Key.CleanseKey();
+			SetAttributeProperties(properties);
+			SetFieldTarget(field);
 		}
 
 		/// <summary>
@@ -148,6 +156,11 @@ namespace LMirman.VespaIO
 				{
 					try
 					{
+						if (builder.RelevantParameterIndex != 0)
+						{
+							return null;
+						}
+
 						return builder.CreateOverwriteAutofill(propertyInfo.GetMethod.Invoke(builder.InstanceTarget, new object[] { })?.ToString());
 					}
 					catch
@@ -159,6 +172,36 @@ namespace LMirman.VespaIO
 
 			InvokeType = InvocationType.Property;
 			IsStatic = propertyInfo.GetAccessors()[0].IsStatic;
+			UpdateGuide();
+		}
+
+		public void SetFieldTarget(FieldInfo field)
+		{
+			if (string.IsNullOrWhiteSpace(Name))
+			{
+				Name = field.Name;
+			}
+
+			fieldInfo = field;
+			AutofillMethod = delegate(AutofillBuilder builder)
+			{
+				try
+				{
+					if (builder.RelevantParameterIndex != 0)
+					{
+						return null;
+					}
+
+					return builder.CreateOverwriteAutofill(fieldInfo.GetValue(builder.InstanceTarget)?.ToString());
+				}
+				catch
+				{
+					return null;
+				}
+			};
+
+			InvokeType = InvocationType.Field;
+			IsStatic = fieldInfo.IsStatic;
 			UpdateGuide();
 		}
 
@@ -324,6 +367,20 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		public bool TryGetFieldInfo(out FieldInfo field)
+		{
+			if (InvokeType == InvocationType.Field)
+			{
+				field = fieldInfo;
+				return true;
+			}
+			else
+			{
+				field = null;
+				return false;
+			}
+		}
+
 		public Type GetDeclaringType()
 		{
 			switch (InvokeType)
@@ -332,6 +389,8 @@ namespace LMirman.VespaIO
 					return methods[0].DeclaringType;
 				case InvocationType.Property:
 					return propertyInfo.DeclaringType;
+				case InvocationType.Field:
+					return fieldInfo.DeclaringType;
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
@@ -396,7 +455,8 @@ namespace LMirman.VespaIO
 		public enum InvocationType
 		{
 			Method,
-			Property
+			Property,
+			Field
 		}
 	}
 }

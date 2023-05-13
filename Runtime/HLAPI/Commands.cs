@@ -53,6 +53,10 @@ namespace LMirman.VespaIO
 				{
 					commandSet.RegisterProperty(commandDefinition.properties, commandDefinition.propertyInfo);
 				}
+				else if (commandDefinition.bindingFlags.HasFlag(BindingFlags.GetField) || commandDefinition.bindingFlags.HasFlag(BindingFlags.SetField))
+				{
+					commandSet.RegisterField(commandDefinition.properties, commandDefinition.fieldInfo);
+				}
 			}
 
 			List<AttributeMethod> attributeMethods = VespaReflection.GetAttributeMethodsFromClasses<CommandAutofillAttribute>(classes, VespaReflection.StaticMethodBindingFlags);

@@ -67,23 +67,6 @@ namespace LMirman.VespaIO
 			return TryGetCommand(key.CleanseKey(), out Command command) ? command : fallbackCommand;
 		}
 
-		public void RegisterProperty(ICommandProperties properties, PropertyInfo propertyInfo)
-		{
-			string key = properties.Key.CleanseKey();
-			if (TryGetCommand(key, out Command command))
-			{
-				command.SetPropertyTarget(propertyInfo);
-				command.SetAttributeProperties(properties);
-				sortDirty = true;
-			}
-			else
-			{
-				command = new Command(properties, propertyInfo);
-				lookup.Add(key, command);
-				sortDirty = true;
-			}
-		}
-		
 		public void RegisterMethod(ICommandProperties properties, MethodInfo methodInfo)
 		{
 			string key = properties.Key.CleanseKey();
@@ -118,6 +101,40 @@ namespace LMirman.VespaIO
 					lookup.Remove(key);
 					sortDirty = true;
 				}
+			}
+		}
+
+		public void RegisterProperty(ICommandProperties properties, PropertyInfo propertyInfo)
+		{
+			string key = properties.Key.CleanseKey();
+			if (TryGetCommand(key, out Command command))
+			{
+				command.SetPropertyTarget(propertyInfo);
+				command.SetAttributeProperties(properties);
+				sortDirty = true;
+			}
+			else
+			{
+				command = new Command(properties, propertyInfo);
+				lookup.Add(key, command);
+				sortDirty = true;
+			}
+		}
+
+		public void RegisterField(ICommandProperties properties, FieldInfo fieldInfo)
+		{
+			string key = properties.Key.CleanseKey();
+			if (TryGetCommand(key, out Command command))
+			{
+				command.SetFieldTarget(fieldInfo);
+				command.SetAttributeProperties(properties);
+				sortDirty = true;
+			}
+			else
+			{
+				command = new Command(properties, fieldInfo);
+				lookup.Add(key, command);
+				sortDirty = true;
 			}
 		}
 

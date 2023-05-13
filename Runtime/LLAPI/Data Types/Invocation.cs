@@ -29,6 +29,7 @@ namespace LMirman.VespaIO
 		private readonly object targetObject;
 		private readonly Command.InvocationType invocationType;
 		private readonly PropertyInfo propertyInfo;
+		private readonly FieldInfo fieldInfo;
 		private readonly MethodInfo methodInfo;
 		private readonly Argument[] arguments;
 		private readonly object[] methodParameters;
@@ -74,7 +75,7 @@ namespace LMirman.VespaIO
 				{
 					ArgumentList.Add(new Argument(words[i]));
 				}
-				
+
 				// Find target object
 				if (!command.IsStatic && ArgumentList.Count == 0)
 				{
@@ -87,7 +88,7 @@ namespace LMirman.VespaIO
 					string target = ArgumentList[0].stringValue.value;
 					ArgumentList.RemoveAt(0);
 					targetObject = VespaFunctions.GetInstanceTarget(target, declaringType);
-					
+
 					if (!declaringType.IsSubclassOf(typeof(Object)))
 					{
 						validState = ValidState.ErrorInstanceIsNotUnityEngineObject;
@@ -103,15 +104,15 @@ namespace LMirman.VespaIO
 				{
 					targetObject = null;
 				}
-				
+
 				arguments = ArgumentList.ToArray();
 				ArgumentList.Clear();
 
 				// See if there is a valid method for this invocation
-				switch (command.InvokeType)
+				invocationType = command.InvokeType;
+				switch (invocationType)
 				{
 					case Command.InvocationType.Method:
-						invocationType = Command.InvocationType.Method;
 						if (!command.TryGetMethod(arguments, out methodInfo, out methodParameters))
 						{
 							validState = ValidState.ErrorNoMethodForParameters;
@@ -120,8 +121,15 @@ namespace LMirman.VespaIO
 
 						break;
 					case Command.InvocationType.Property:
-						invocationType = Command.InvocationType.Property;
 						if (!command.TryGetPropertyInfo(out propertyInfo))
+						{
+							validState = ValidState.ErrorInvalidProperty;
+							return;
+						}
+
+						break;
+					case Command.InvocationType.Field:
+						if (!command.TryGetFieldInfo(out fieldInfo))
 						{
 							validState = ValidState.ErrorInvalidProperty;
 							return;
@@ -168,6 +176,11 @@ namespace LMirman.VespaIO
 					InvokeProperty(console);
 					return InvokeResult.Success;
 				}
+				else if (invocationType == Command.InvocationType.Field)
+				{
+					InvokeField(console);
+					return InvokeResult.Success;
+				}
 				else
 				{
 					return InvokeResult.ErrorException;
@@ -210,6 +223,34 @@ namespace LMirman.VespaIO
 			else
 			{
 				console.Log($"Cannot set value of property \"{propertyInfo.Name}\" ({propertyInfo.PropertyType}) to \"{inputValue}\"", Console.LogStyling.Error);
+			}
+		}
+
+		private void InvokeField(Console console)
+		{
+			object prevValue = fieldInfo.GetValue(targetObject);
+			if (fieldInfo.IsInitOnly)
+			{
+				console.Log($"{fieldInfo.Name}: {prevValue} [READONLY]");
+				return;
+			}
+			else if (arguments.Length == 0)
+			{
+				console.Log($"{fieldInfo.Name}: {prevValue}");
+				return;
+			}
+
+			string inputValue = arguments[0].stringValue.value;
+			TypeConverter typeConverter = TypeDescriptor.GetConverter(fieldInfo.FieldType);
+			if (typeConverter.IsValid(inputValue))
+			{
+				object newValue = typeConverter.ConvertFrom(inputValue);
+				fieldInfo.SetValue(targetObject, newValue);
+				console.Log($"{fieldInfo.Name}: {prevValue} -> {newValue}");
+			}
+			else
+			{
+				console.Log($"Cannot set value of property \"{fieldInfo.Name}\" ({fieldInfo.FieldType}) to \"{inputValue}\"", Console.LogStyling.Error);
 			}
 		}
 
