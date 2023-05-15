@@ -2,13 +2,21 @@ using JetBrains.Annotations;
 
 namespace LMirman.VespaIO
 {
+	/// <summary>
+	/// A definition for an autofill value that can be insert into a specific console input.
+	/// </summary>
+	/// <remarks>
+	/// An autofill value is directly connected with the current string for console input.
+	/// Therefore, an autofill value should be considered unusable between consoles and out of date when console input has changed.
+	/// </remarks>
 	public class AutofillValue
 	{
 		/// <summary>
 		/// The full word that will be autofilled into the console
 		/// </summary>
 		/// <remarks>
-		/// Useful for previewing out of line what text will be insert
+		/// This word will be substituted into the current console input starting at <see cref="globalStartIndex"/>.
+		/// Can also be used to preview the full word that will substitute the current word.
 		/// </remarks>
 		public readonly string newWord;
 		/// <summary>
@@ -16,41 +24,30 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public readonly string markupNewWord;
 		/// <summary>
-		/// The text that will be insert into the console to place the autofill word in
+		/// The character index that the relevant word begins at.
+		/// Essentially the starting index for where autofill values will be placed.
 		/// </summary>
 		/// <remarks>
-		/// Useful for previewing in line what text will be insert
-		/// </remarks>
-		public readonly string insertText;
-		/// <summary>
 		/// Unlike <see cref="Word.startIndex"/> this index is relative to the entire input, including other statements.
-		/// </summary>
+		/// </remarks>
 		public readonly int globalStartIndex;
 
-		public AutofillValue(string newWord, int oldWordLength, int globalStartIndex)
-		{
-			this.newWord = newWord;
-			markupNewWord = MakeLiteralIfNecessary(newWord);
-			insertText = newWord.Substring(oldWordLength);
-			this.globalStartIndex = globalStartIndex;
-		}
-
-		public AutofillValue(string newWord, string insertText, int globalStartIndex)
-		{
-			this.newWord = newWord;
-			markupNewWord = MakeLiteralIfNecessary(newWord);
-			this.insertText = insertText;
-			this.globalStartIndex = globalStartIndex;
-		}
-
+		/// <summary>
+		/// Create an autofill value that will insert text <paramref name="newWord"/> into the console input and character index <paramref name="globalStartIndex"/>.
+		/// </summary>
+		/// <param name="newWord">The text that will be placed as the relevant word in the console input</param>
+		/// <param name="globalStartIndex">The character index for the start of the relevant word in the console</param>
 		public AutofillValue(string newWord, int globalStartIndex)
 		{
 			this.newWord = newWord;
 			markupNewWord = MakeLiteralIfNecessary(newWord);
 			this.globalStartIndex = globalStartIndex;
-			insertText = string.Empty;
 		}
 
+		/// <summary>
+		/// If a word contains a space it must be surround by quotations inside the console input.<br/>
+		/// To make using autofill values easier we automatically add quotes if they are required and not currently present.
+		/// </summary>
 		[Pure]
 		private string MakeLiteralIfNecessary(string word)
 		{

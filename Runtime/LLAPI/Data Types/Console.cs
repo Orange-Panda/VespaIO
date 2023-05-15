@@ -9,15 +9,22 @@ namespace LMirman.VespaIO
 	[PublicAPI]
 	public class Console
 	{
-		protected int inputHistoryCapacity = 16;
-		protected int outputCapacity = 8192;
 		protected bool cheatsEnabled;
 
+		// Input history
+		public readonly List<string> recentInputs = new List<string>(32);
+		protected int inputHistoryCapacity = 16;
+
+		// Output
+		protected int outputCapacity = 8192;
+		protected readonly StringBuilder output = new StringBuilder(16384);
+		protected string outputLog = string.Empty;
+		protected bool outputDirty;
+
 		/// <summary>
-		/// True if this console is allowed to operate at all, false if it is prohibited from operating.
+		/// True if this console is allowed to execute commands at all, false if it is prohibited from operating.
 		/// </summary>
 		public bool Enabled { get; set; }
-
 		public CommandSet CommandSet { get; set; }
 		public AliasSet AliasSet { get; set; }
 
@@ -27,24 +34,25 @@ namespace LMirman.VespaIO
 		public virtual bool CheatsEnabled => cheatsEnabled;
 
 		/// <summary>
-		/// Invoked when something is logged into the console output or if it is cleared.
+		/// Invoked when the value of <see cref="output"/> has been modified such as <see cref="Log"/> or <see cref="Clear"/> being used.
 		/// </summary>
 		public event Action OutputUpdate = delegate { };
 
-		public readonly List<string> recentInputs = new List<string>(32);
-		protected readonly StringBuilder output = new StringBuilder(16384);
-		protected string outputLog = string.Empty;
-		protected bool outputDirty;
-
 		#region Core
+		/// <summary>
+		/// Run a <b>full</b> input message on this console.
+		/// This will substitute aliases with their definition when found.
+		/// This will also separate the input into individual commands split by the semicolon character.
+		/// </summary>
+		/// <param name="input">The input text to run on this console.</param>
+		/// <param name="silent">When true will suppress the message showing the input string and from being recorded in history. This will not disable any other log messages.</param>
 		public void RunInput(string input, bool silent = false)
 		{
 			if (!silent)
 			{
 				Log($"> {input}");
+				RecordInputInHistory(input);
 			}
-
-			RecordInputInHistory(input);
 
 			if (string.IsNullOrWhiteSpace(input))
 			{
@@ -88,11 +96,12 @@ namespace LMirman.VespaIO
 		}
 
 		/// <summary>
-		/// Run a command message.
+		/// Run a <b>single</b> command message <b>without</b> separating by semicolons or using aliases.
 		/// </summary>
 		/// <remarks>
 		/// Unlike <see cref="RunInput"/> will <b>not</b> separate by semicolons or replace aliases.
 		/// </remarks>
+		/// <seealso cref="RunInput"/>
 		public void RunCommand(string commandText)
 		{
 			Invocation invocation = new Invocation(commandText, CommandSet);
@@ -117,8 +126,8 @@ namespace LMirman.VespaIO
 					Log("Invalid arguments provided for command.", LogStyling.Error);
 					Log(invocation.command.Guide);
 					break;
-				case Invocation.ValidState.ErrorInvalidProperty:
-					Log("There was no target property valid for command.", LogStyling.Error);
+				case Invocation.ValidState.ErrorInvalidPropertyOrField:
+					Log("There was no target property or field variable for command.", LogStyling.Error);
 					break;
 				case Invocation.ValidState.ErrorNoInstanceTarget:
 					Log("There was no target provided for instance command.", LogStyling.Error);
@@ -172,6 +181,9 @@ namespace LMirman.VespaIO
 		}
 		#endregion
 
+		/// <summary>
+		/// Clear the entire output history for this console.
+		/// </summary>
 		public void Clear()
 		{
 			output.Clear();
@@ -219,25 +231,26 @@ namespace LMirman.VespaIO
 			}
 
 			return outputLog;
-		}
 
-		private void TrimToCapacity()
-		{
-			if (output.Length > outputCapacity)
+			void TrimToCapacity()
 			{
-				// Starting from the initial place we want to remove capacity, find the end of its line and trim output to there.
-				int removeIndex = output.Length - outputCapacity;
-				while (removeIndex < output.Length)
+				if (output.Length > outputCapacity)
 				{
-					char c = output[removeIndex];
-					removeIndex++;
-					if (c == '\n' || c == '\r')
+					// Starting from the initial place we want to remove capacity, find the end of its line and trim output to there.
+					int removeIndex = output.Length - outputCapacity;
+					while (removeIndex < output.Length)
 					{
-						break;
+						char c = output[removeIndex];
+						removeIndex++;
+						if (c == '\n' || c == '\r')
+						{
+							break;
+						}
 					}
-				}
 
-				output.Remove(0, removeIndex);
+					// We do NOT notify output update because this is only invoked at the end of the event chain.
+					output.Remove(0, removeIndex);
+				}
 			}
 		}
 
@@ -280,7 +293,7 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		private static readonly AutofillValue DefaultAutofill = new AutofillValue("help", 0, 0);
+		private static readonly AutofillValue DefaultAutofill = new AutofillValue("help", 0);
 		private readonly AutofillBuilder autofillBuilder = new AutofillBuilder();
 
 		public AutofillValue GetAutofillValue(string input, HashSet<string> autofillExclusions, bool includeCheats = false)
@@ -320,7 +333,7 @@ namespace LMirman.VespaIO
 				{
 					if (aliasKey.StartsWith(inputCommand) && !autofillExclusions.Contains(aliasKey))
 					{
-						return new AutofillValue(aliasKey, inputCommand.Length, commandStartIndex + word.startIndex);
+						return new AutofillValue(aliasKey, commandStartIndex + word.startIndex);
 					}
 				}
 
@@ -329,7 +342,7 @@ namespace LMirman.VespaIO
 					string commandKey = command.Key;
 					if (commandKey.StartsWith(inputCommand) && !autofillExclusions.Contains(commandKey))
 					{
-						return new AutofillValue(commandKey, inputCommand.Length, commandStartIndex + word.startIndex);
+						return new AutofillValue(commandKey, commandStartIndex + word.startIndex);
 					}
 				}
 			}
@@ -337,7 +350,7 @@ namespace LMirman.VespaIO
 			{
 				return null;
 			}
-			else 	
+			else
 			{
 				Word lastWord = sanitizedWords[sanitizedWords.Count - 1];
 				Word pureLastWord = pureWords[pureWords.Count - 1];
@@ -345,17 +358,18 @@ namespace LMirman.VespaIO
 				autofillBuilder.Words = sanitizedWords;
 				autofillBuilder.RelevantWordIndex = isNewWordRelevant ? sanitizedWords.Count : sanitizedWords.Count - 1;
 				autofillBuilder.RelevantParameterIndex = !foundCommand.IsStatic ? autofillBuilder.RelevantWordIndex - 2 : autofillBuilder.RelevantWordIndex - 1;
-				autofillBuilder.RelevantWordCharIndex = isNewWordRelevant ? commandStartIndex + pureLastWord.startIndex + pureLastWord.text.Length + 1 : commandStartIndex + pureLastWord.startIndex;
+				autofillBuilder.RelevantWordCharIndex =
+					isNewWordRelevant ? commandStartIndex + pureLastWord.startIndex + pureLastWord.text.Length + 1 : commandStartIndex + pureLastWord.startIndex;
 				autofillBuilder.Exclusions = autofillExclusions;
 				if (!foundCommand.IsStatic && sanitizedWords.Count >= 2)
 				{
-					autofillBuilder.InstanceTarget = VespaFunctions.GetInstanceTarget(sanitizedWords[1].text, foundCommand.GetDeclaringType());
+					autofillBuilder.InstanceTarget = VespaFunctions.GetInstanceTarget(sanitizedWords[1].text, foundCommand.DeclaringType);
 				}
 				else
 				{
 					autofillBuilder.InstanceTarget = null;
 				}
-				
+
 				if (!foundCommand.IsStatic && (sanitizedWords.Count == 1 || (sanitizedWords.Count == 2 && !isNewWordRelevant)))
 				{
 					return GetInstanceAutofillValue(autofillBuilder, foundCommand);
@@ -380,7 +394,7 @@ namespace LMirman.VespaIO
 		private static AutofillValue GetInstanceAutofillValue(AutofillBuilder autofillBuilder, Command command)
 		{
 			string searchPhrase = autofillBuilder.GetRelevantWordText();
-			Type declaringType = command.GetDeclaringType();
+			Type declaringType = command.DeclaringType;
 			if (declaringType.IsSubclassOf(typeof(UnityEngine.Object)))
 			{
 				UnityEngine.Object[] foundObjects = UnityEngine.Object.FindObjectsOfType(declaringType);
@@ -388,7 +402,7 @@ namespace LMirman.VespaIO
 				{
 					if (foundObject.name.StartsWith(searchPhrase, StringComparison.CurrentCultureIgnoreCase) && !autofillBuilder.Exclusions.Contains(foundObject.name))
 					{
-						return autofillBuilder.CreateOverwriteAutofill(foundObject.name);
+						return autofillBuilder.CreateAutofill(foundObject.name);
 					}
 				}
 			}
@@ -413,6 +427,9 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		/// <summary>
+		/// Defines how log messages should be marked up, if any.
+		/// </summary>
 		public enum LogStyling
 		{
 			/// <summary>

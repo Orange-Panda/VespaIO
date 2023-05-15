@@ -15,8 +15,6 @@ public class DevConsoleRunner : MonoBehaviour
 	[SerializeField]
 	private Canvas canvas;
 	[SerializeField]
-	private CanvasScaler canvasScaler;
-	[SerializeField]
 	private GameObject container;
 	[SerializeField]
 	private TextMeshProUGUI history;
@@ -24,6 +22,25 @@ public class DevConsoleRunner : MonoBehaviour
 	private TMP_InputField inputText;
 	[SerializeField]
 	private TMP_Text autofillPreview;
+
+	[Header("Properties")]
+	[Tooltip("When true will require a key to be held to open/close the console.")]
+	[SerializeField]
+	private bool requireHeldKeyToToggle;
+	[Tooltip("When 'requireHeldKeyForInput' is enabled: require one of these keys to be held to open/close the console.")]
+	[SerializeField]
+	private KeyCode[] inputWhileHeldKeycodes = new[] { KeyCode.LeftControl, KeyCode.RightControl, KeyCode.LeftCommand, KeyCode.RightCommand };
+	[Space]
+	[SerializeField]
+	private KeyCode[] openConsoleKeycodes = new[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash, KeyCode.F10 };
+	[Tooltip("Close the console when these are pressed only if the console is empty.")]
+	[SerializeField]
+	private KeyCode[] closeEmptyConsoleKeycodes = new[] { KeyCode.Tilde, KeyCode.BackQuote, KeyCode.Backslash };
+	[Tooltip("Close the console when these are pressed, regardless of if there is a pending input.")]
+	[SerializeField]
+	private KeyCode[] closeAnyConsoleKeycodes = new[] { KeyCode.F10, KeyCode.Escape };
+	[SerializeField]
+	private bool closeConsoleOnLeftClick = true;
 
 	private bool historyDirty;
 	private bool hasNoEventSystem;
@@ -47,7 +64,6 @@ public class DevConsoleRunner : MonoBehaviour
 	{
 		DevConsole.console.OutputUpdate += ConsoleOnOutputUpdate;
 		inputText.onValueChanged.AddListener(InputText_OnValueChanged);
-		canvasScaler.scaleFactor = NativeSettings.Config.consoleScale;
 		recentInputIndex = -1;
 	}
 
@@ -96,7 +112,7 @@ public class DevConsoleRunner : MonoBehaviour
 	private void Start()
 	{
 		// Destroy the graphic raycaster if the console is never expected to utilize it
-		if (NativeSettings.Config.closeConsoleOnLeftClick && TryGetComponent(out GraphicRaycaster raycaster))
+		if (closeConsoleOnLeftClick && TryGetComponent(out GraphicRaycaster raycaster))
 		{
 			Destroy(raycaster);
 		}
@@ -109,9 +125,8 @@ public class DevConsoleRunner : MonoBehaviour
 
 	private void Update()
 	{
-		ConsoleSettingsConfig config = NativeSettings.Config;
 		bool shouldInput = DetermineShouldInput();
-		bool openKey = shouldInput && GetKeysDown(config.openConsoleKeycodes);
+		bool openKey = shouldInput && GetKeysDown(openConsoleKeycodes);
 		bool exitKey = shouldInput && DetermineShouldExit();
 
 		UpdateTraverseCommandHistory();
@@ -143,20 +158,20 @@ public class DevConsoleRunner : MonoBehaviour
 
 		bool DetermineShouldInput()
 		{
-			return !config.requireHeldKeyToToggle || GetKeysHeld(config.inputWhileHeldKeycodes);
+			return !requireHeldKeyToToggle || GetKeysHeld(inputWhileHeldKeycodes);
 		}
 
 		bool DetermineShouldExit()
 		{
-			if (GetKeysDown(config.closeAnyConsoleKeycodes))
+			if (GetKeysDown(closeAnyConsoleKeycodes))
 			{
 				return true;
 			}
-			else if (GetKeysDown(config.closeEmptyConsoleKeycodes) && inputText.text.Length <= 1)
+			else if (GetKeysDown(closeEmptyConsoleKeycodes) && inputText.text.Length <= 1)
 			{
 				return true;
 			}
-			else if (Input.GetMouseButtonDown(0) && config.closeConsoleOnLeftClick)
+			else if (Input.GetMouseButtonDown(0) && closeConsoleOnLeftClick)
 			{
 				return true;
 			}

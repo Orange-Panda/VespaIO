@@ -2,14 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text;
 using Object = UnityEngine.Object;
 
 namespace LMirman.VespaIO
 {
+	/// <summary>
+	/// Defines an immutable object that is used to invoke commands at runtime. 
+	/// </summary>
 	public class Invocation
 	{
 		/// <summary>
-		/// If this object is valid or not.
+		/// If this invocation is valid or not.
 		/// Can determine is valid by checking if equal to <see cref="ValidState.Valid"/>, if it is not this invocation is not valid.
 		/// More details about why it is not valid is also defined by this type.
 		/// </summary>
@@ -25,6 +29,10 @@ namespace LMirman.VespaIO
 		/// </summary>
 		public readonly Command command;
 
+		/// <summary>
+		/// The object that is target of this invocation.
+		/// Null in cases of static commands.
+		/// </summary>
 		private readonly object targetObject;
 		private readonly Command.InvocationType invocationType;
 		private readonly PropertyInfo propertyInfo;
@@ -33,7 +41,10 @@ namespace LMirman.VespaIO
 		private readonly Word[] arguments;
 		private readonly object[] methodParameters;
 
-		private static readonly List<Word> ArgumentList = new List<Word>(32);
+		/// <summary>
+		/// Temporarily used to construct <see cref="arguments"/>
+		/// </summary>
+		private static readonly List<Word> ArgumentsConstructor = new List<Word>(32);
 
 		/// <summary>
 		/// Create an invocation object for a command based on a character string.
@@ -69,23 +80,23 @@ namespace LMirman.VespaIO
 
 				// Assemble an array of Arguments from the input.
 				// We reuse a static readonly list to minimize garbage collection.
-				ArgumentList.Clear();
+				ArgumentsConstructor.Clear();
 				for (int i = 1; i < words.Count; i++)
 				{
-					ArgumentList.Add(words[i]);
+					ArgumentsConstructor.Add(words[i]);
 				}
 
 				// Find target object
-				if (!command.IsStatic && ArgumentList.Count == 0)
+				if (!command.IsStatic && ArgumentsConstructor.Count == 0)
 				{
 					validState = ValidState.ErrorNoInstanceTarget;
 					return;
 				}
 				else if (!command.IsStatic)
 				{
-					Type declaringType = command.GetDeclaringType();
-					string target = ArgumentList[0].text;
-					ArgumentList.RemoveAt(0);
+					Type declaringType = command.DeclaringType;
+					string target = ArgumentsConstructor[0].text;
+					ArgumentsConstructor.RemoveAt(0);
 					targetObject = VespaFunctions.GetInstanceTarget(target, declaringType);
 
 					if (!declaringType.IsSubclassOf(typeof(Object)))
@@ -104,8 +115,8 @@ namespace LMirman.VespaIO
 					targetObject = null;
 				}
 
-				arguments = ArgumentList.ToArray();
-				ArgumentList.Clear();
+				arguments = ArgumentsConstructor.ToArray();
+				ArgumentsConstructor.Clear();
 
 				// See if there is a valid method for this invocation
 				invocationType = command.InvokeType;
@@ -122,7 +133,7 @@ namespace LMirman.VespaIO
 					case Command.InvocationType.Property:
 						if (!command.TryGetPropertyInfo(out propertyInfo))
 						{
-							validState = ValidState.ErrorInvalidProperty;
+							validState = ValidState.ErrorInvalidPropertyOrField;
 							return;
 						}
 
@@ -130,7 +141,7 @@ namespace LMirman.VespaIO
 					case Command.InvocationType.Field:
 						if (!command.TryGetFieldInfo(out fieldInfo))
 						{
-							validState = ValidState.ErrorInvalidProperty;
+							validState = ValidState.ErrorInvalidPropertyOrField;
 							return;
 						}
 
@@ -197,7 +208,7 @@ namespace LMirman.VespaIO
 			object prevValue = propertyInfo.CanRead ? propertyInfo.GetValue(targetObject) : string.Empty;
 			if (!propertyInfo.CanWrite)
 			{
-				console.Log($"{propertyInfo.Name}: {prevValue} [READONLY]");
+				console.Log($"{GetLogValue("Property", propertyInfo.Name)} has readonly value \"{prevValue}\"");
 				return;
 			}
 			else if (arguments.Length == 0 && !propertyInfo.CanRead)
@@ -207,7 +218,7 @@ namespace LMirman.VespaIO
 			}
 			else if (arguments.Length == 0)
 			{
-				console.Log($"{propertyInfo.Name}: {prevValue}");
+				console.Log($"{GetLogValue("Property", propertyInfo.Name)} has value \"{prevValue}\"");
 				return;
 			}
 
@@ -217,7 +228,9 @@ namespace LMirman.VespaIO
 			{
 				object newValue = typeConverter.ConvertFrom(inputValue);
 				propertyInfo.SetValue(targetObject, newValue);
-				console.Log($"{propertyInfo.Name}: {prevValue} -> {newValue}");
+				console.Log(propertyInfo.CanRead
+					? $"Set {GetLogValue("property", propertyInfo.Name)} from \"{prevValue}\" to \"{newValue}\""
+					: $"Set {GetLogValue("property", propertyInfo.Name)} to \"{newValue}\"");
 			}
 			else
 			{
@@ -230,12 +243,12 @@ namespace LMirman.VespaIO
 			object prevValue = fieldInfo.GetValue(targetObject);
 			if (fieldInfo.IsInitOnly)
 			{
-				console.Log($"{fieldInfo.Name}: {prevValue} [READONLY]");
+				console.Log($"{GetLogValue("Field", fieldInfo.Name)} has readonly value \"{prevValue}\"");
 				return;
 			}
 			else if (arguments.Length == 0)
 			{
-				console.Log($"{fieldInfo.Name}: {prevValue}");
+				console.Log($"{GetLogValue("Field", fieldInfo.Name)} has value \"{prevValue}\"");
 				return;
 			}
 
@@ -245,12 +258,29 @@ namespace LMirman.VespaIO
 			{
 				object newValue = typeConverter.ConvertFrom(inputValue);
 				fieldInfo.SetValue(targetObject, newValue);
-				console.Log($"{fieldInfo.Name}: {prevValue} -> {newValue}");
+				console.Log($"Set {GetLogValue("field", fieldInfo.Name)} from \"{prevValue}\" to \"{newValue}\"");
 			}
 			else
 			{
-				console.Log($"Cannot set value of property \"{fieldInfo.Name}\" ({fieldInfo.FieldType}) to \"{inputValue}\"", Console.LogStyling.Error);
+				console.Log($"Cannot set value of field \"{fieldInfo.Name}\" ({fieldInfo.FieldType}) to \"{inputValue}\"", Console.LogStyling.Error);
 			}
+		}
+
+		private static readonly StringBuilder LogValueBuilder = new StringBuilder();
+		private string GetLogValue(string invokeType, string variableName)
+		{
+			LogValueBuilder.Clear();
+			LogValueBuilder.Append($"{invokeType} \"{variableName}\"");
+			if (!command.IsStatic && targetObject is Object unityObject)
+			{
+				LogValueBuilder.Append($" on \"{unityObject.name}\"");
+			}
+			else if (command.IsStatic)
+			{
+				LogValueBuilder.Append($" in \"{command.DeclaringType}\"");
+			}
+
+			return LogValueBuilder.ToString();
 		}
 
 		/// <summary>
@@ -285,7 +315,7 @@ namespace LMirman.VespaIO
 			/// <summary>
 			/// The invocation is invalid because there was no valid property.
 			/// </summary>
-			ErrorInvalidProperty,
+			ErrorInvalidPropertyOrField,
 			/// <summary>
 			/// The invocation is invalid because there was no target for the instance invocation.
 			/// </summary>

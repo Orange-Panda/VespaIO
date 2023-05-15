@@ -18,6 +18,15 @@ namespace LMirman.VespaIO
 	[PublicAPI]
 	public class Command : ICommandProperties
 	{
+		private FieldInfo fieldInfo;
+		private PropertyInfo propertyInfo;
+		private readonly List<MethodInfo> methods = new List<MethodInfo>();
+		private readonly string key;
+		/// <summary>
+		/// Used to build the guide property without as much garbage collection overhead as string concatenation
+		/// </summary>
+		private static readonly StringBuilder GuideBuilder = new StringBuilder();
+
 		/// <summary>
 		/// The guide to usages of the command explaining to the user how parameters should be provided to the command.
 		/// </summary>
@@ -29,10 +38,21 @@ namespace LMirman.VespaIO
 		/// It is not currently possible to override the way by which the guide is generated.
 		/// </remarks>
 		public string Guide { get; private set; }
-		public InvocationType InvokeType { get; private set; }
-		public bool IsStatic { get; private set; }
-
-		// ReSharper disable once InconsistentNaming
+		/// <summary>
+		/// The invocation type of this command.
+		/// Determines certain immutable properties of how this command behaves.
+		/// </summary>
+		public InvocationType InvokeType { get; }
+		/// <summary>
+		/// If the target of invocation is static.
+		/// This value is immutable and is determined from the first invocation target set when this command is created.
+		/// </summary>
+		public bool IsStatic { get; }
+		/// <summary>
+		/// The <see cref="Type"/> that the invocation target of this command is defined within.
+		/// Usually used for non-static commands to find targets.
+		/// </summary>
+		public Type DeclaringType { get; private set; }
 		/// <inheritdoc cref="ICommandProperties.Key"/>
 		public string Key => key;
 		/// <inheritdoc cref="ICommandProperties.Name"/>
@@ -55,46 +75,55 @@ namespace LMirman.VespaIO
 		public Func<AutofillBuilder, AutofillValue> AutofillMethod { get; private set; }
 
 		/// <summary>
-		/// Used to build the guide property without as much garbage collection overhead as string concatenation
-		/// </summary>
-		private static readonly StringBuilder GuideBuilder = new StringBuilder();
-
-		private FieldInfo fieldInfo;
-		private PropertyInfo propertyInfo;
-		private readonly List<MethodInfo> methods = new List<MethodInfo>();
-		private readonly string key;
-
-		/// <summary>
 		/// True if there is at least one method defined for this command. False if there are none.
 		/// </summary>
 		public bool HasMethod => methods.Count > 0;
 
+		#region Constructors
 		/// <summary>
-		/// Create a brand new command by defining attributes from a <paramref name="properties"/> and adding method <paramref name="method"/>.
+		/// Create a new Method invocation type command.
 		/// </summary>
 		/// <param name="properties">The properties that define this command such as title, description, and cheat properties.</param>
 		/// <param name="method">The first method to be added to this command definition.</param>
 		public Command(ICommandProperties properties, MethodInfo method)
 		{
 			key = properties.Key.CleanseKey();
+			InvokeType = InvocationType.Method;
+			IsStatic = method.IsStatic;
 			SetAttributeProperties(properties);
 			AddMethod(method);
 		}
 
+		/// <summary>
+		/// Create a new Property invocation type command.
+		/// </summary>
+		/// <param name="properties">The properties that define this command such as title, description, and cheat properties.</param>
+		/// <param name="property">The property that is the target of this command.</param>
 		public Command(ICommandProperties properties, PropertyInfo property)
 		{
 			key = properties.Key.CleanseKey();
+			InvokeType = InvocationType.Property;
+			IsStatic = property.GetAccessors()[0].IsStatic;
 			SetAttributeProperties(properties);
 			SetPropertyTarget(property);
 		}
 
+		/// <summary>
+		/// Create a new Field invocation type command.
+		/// </summary>
+		/// <param name="properties">The properties that define this command such as title, description, and cheat properties.</param>
+		/// <param name="field">The field that is the target of this command.</param>
 		public Command(ICommandProperties properties, FieldInfo field)
 		{
 			key = properties.Key.CleanseKey();
+			InvokeType = InvocationType.Field;
+			IsStatic = field.IsStatic;
 			SetAttributeProperties(properties);
 			SetFieldTarget(field);
 		}
+		#endregion
 
+		#region Setters
 		/// <summary>
 		/// Set attributes for this command based on a provided <see cref="ICommandProperties"/>.
 		/// </summary>
@@ -143,83 +172,37 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		public void SetPropertyTarget(PropertyInfo property)
-		{
-			if (string.IsNullOrWhiteSpace(Name))
-			{
-				Name = property.Name;
-			}
-
-			propertyInfo = property;
-			if (propertyInfo.CanRead)
-			{
-				AutofillMethod = delegate(AutofillBuilder builder)
-				{
-					try
-					{
-						if (builder.RelevantParameterIndex != 0)
-						{
-							return null;
-						}
-
-						return builder.CreateOverwriteAutofill(propertyInfo.GetMethod.Invoke(builder.InstanceTarget, new object[] { })?.ToString());
-					}
-					catch
-					{
-						return null;
-					}
-				};
-			}
-
-			InvokeType = InvocationType.Property;
-			IsStatic = propertyInfo.GetAccessors()[0].IsStatic;
-			UpdateGuide();
-		}
-
-		public void SetFieldTarget(FieldInfo field)
-		{
-			if (string.IsNullOrWhiteSpace(Name))
-			{
-				Name = field.Name;
-			}
-
-			fieldInfo = field;
-			AutofillMethod = delegate(AutofillBuilder builder)
-			{
-				try
-				{
-					if (builder.RelevantParameterIndex != 0)
-					{
-						return null;
-					}
-
-					return builder.CreateOverwriteAutofill(fieldInfo.GetValue(builder.InstanceTarget)?.ToString());
-				}
-				catch
-				{
-					return null;
-				}
-			};
-
-			InvokeType = InvocationType.Field;
-			IsStatic = fieldInfo.IsStatic;
-			UpdateGuide();
-		}
-
 		/// <summary>
 		/// Add a method to this command definition and automatically update <see cref="Guide"/> to include it.
 		/// </summary>
 		/// <param name="method">The method to add to the methods list for this command.</param>
 		public void AddMethod(MethodInfo method)
 		{
-			if (string.IsNullOrWhiteSpace(Name))
+			if (InvokeType != InvocationType.Method)
 			{
-				Name = method.Name;
+				Debug.LogError($"There was an attempt to add method \"{method.Name}\" to command \"{key}\" but command is of type {InvokeType}.");
+				return;
 			}
 
-			InvokeType = InvocationType.Method;
+			bool isStatic = method.IsStatic;
+			if (IsStatic != isStatic)
+			{
+				Debug.LogError($"There was an attempt to set {(isStatic ? "static" : "non-static")} method \"{method.Name}\" to {(IsStatic ? "static" : "non-static")} command \"{key}\".");
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(Name))
+			{
+				Name = method.Name.NicifyName();
+			}
+
+			if (string.IsNullOrWhiteSpace(Description))
+			{
+				Description = $"Invokes method \"{method.Name}\" in \"{method.DeclaringType}\"";
+			}
+
 			methods.Add(method);
-			IsStatic = method.IsStatic;
+			DeclaringType = method.DeclaringType;
 			UpdateGuide();
 		}
 
@@ -234,6 +217,107 @@ namespace LMirman.VespaIO
 			UpdateGuide();
 		}
 
+		public void SetPropertyTarget(PropertyInfo property)
+		{
+			if (InvokeType != InvocationType.Property)
+			{
+				Debug.LogError($"There was an attempt to set property \"{property.Name}\" to command \"{key}\" but command is of type {InvokeType}.");
+				return;
+			}
+
+			bool isStatic = property.GetAccessors()[0].IsStatic;
+			if (IsStatic != isStatic)
+			{
+				Debug.LogError($"There was an attempt to set {(isStatic ? "static" : "non-static")} property \"{property.Name}\" to {(IsStatic ? "static" : "non-static")} command \"{key}\".");
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(Name))
+			{
+				Name = property.Name.NicifyName();
+			}
+
+			if (string.IsNullOrWhiteSpace(Description))
+			{
+				string prefix = GetAccessString(property.CanRead, property.CanWrite);
+				Description = $"{prefix} property \"{property.Name}\" in \"{property.DeclaringType}\"";
+			}
+
+			propertyInfo = property;
+			DeclaringType = property.DeclaringType;
+			if (propertyInfo.CanRead)
+			{
+				AutofillMethod = delegate(AutofillBuilder builder)
+				{
+					try
+					{
+						if (builder.RelevantParameterIndex != 0)
+						{
+							return null;
+						}
+
+						return builder.CreateAutofill(propertyInfo.GetMethod.Invoke(builder.InstanceTarget, new object[] { })?.ToString());
+					}
+					catch
+					{
+						return null;
+					}
+				};
+			}
+
+			UpdateGuide();
+		}
+
+		public void SetFieldTarget(FieldInfo field)
+		{
+			if (InvokeType != InvocationType.Field)
+			{
+				Debug.LogError($"There was an attempt to set field \"{field.Name}\" to command \"{key}\" but command is of type {InvokeType}.");
+				return;
+			}
+
+			bool isStatic = field.IsStatic;
+			if (IsStatic != isStatic)
+			{
+				Debug.LogError($"There was an attempt to set {(isStatic ? "static" : "non-static")} field \"{field.Name}\" to {(IsStatic ? "static" : "non-static")} command \"{key}\".");
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(Name))
+			{
+				Name = field.Name.NicifyName();
+			}
+
+			if (string.IsNullOrWhiteSpace(Description))
+			{
+				string prefix = GetAccessString(true, !field.IsInitOnly);
+				Description = $"{prefix} field \"{field.Name}\" in \"{field.DeclaringType}\"";
+			}
+
+			fieldInfo = field;
+			DeclaringType = field.DeclaringType;
+			AutofillMethod = delegate(AutofillBuilder builder)
+			{
+				try
+				{
+					if (builder.RelevantParameterIndex != 0)
+					{
+						return null;
+					}
+
+					return builder.CreateAutofill(fieldInfo.GetValue(builder.InstanceTarget)?.ToString());
+				}
+				catch
+				{
+					return null;
+				}
+			};
+
+			UpdateGuide();
+		}
+		#endregion
+
+		#region Getters
 		/// <summary>
 		/// Get all methods that have any possibility to be invoked by a set of arguments.
 		/// </summary>
@@ -358,7 +442,7 @@ namespace LMirman.VespaIO
 
 		public bool TryGetPropertyInfo(out PropertyInfo property)
 		{
-			if (InvokeType == InvocationType.Property)
+			if (InvokeType == InvocationType.Property && propertyInfo != null)
 			{
 				property = propertyInfo;
 				return true;
@@ -372,7 +456,7 @@ namespace LMirman.VespaIO
 
 		public bool TryGetFieldInfo(out FieldInfo field)
 		{
-			if (InvokeType == InvocationType.Field)
+			if (InvokeType == InvocationType.Field && fieldInfo != null)
 			{
 				field = fieldInfo;
 				return true;
@@ -384,50 +468,107 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		public Type GetDeclaringType()
+		private static bool GetIsArgumentArrayMethod(ParameterInfo[] parameters)
 		{
-			switch (InvokeType)
+			return parameters.Length == 1 && parameters[0].ParameterType == typeof(Word[]);
+		}
+		#endregion
+
+		private string GetAccessString(bool canRead, bool canWrite)
+		{
+			if (canRead && canWrite)
 			{
-				case InvocationType.Method:
-					return methods[0].DeclaringType;
-				case InvocationType.Property:
-					return propertyInfo.DeclaringType;
-				case InvocationType.Field:
-					return fieldInfo.DeclaringType;
-				default:
-					throw new ArgumentOutOfRangeException();
+				return "Get and set";
+			}
+			else if (canRead)
+			{
+				return "Get";
+			}
+			else if (canWrite)
+			{
+				return "Set";
+			}
+			else
+			{
+				return string.Empty;
 			}
 		}
 
 		private void UpdateGuide()
 		{
 			GuideBuilder.Clear();
-			GuideBuilder.AppendFormat("{0} - \"{1}\"\n", key, Name);
+			GuideBuilder.AppendFormat("[{0}] \"{1}\"\n", key, Name);
+			GuideBuilder.AppendFormat(" - {0}\n", Description);
 
-			for (int i = 0; i < methods.Count; i++)
+			switch (InvokeType)
 			{
-				MethodInfo method = methods[i];
-				GuideBuilder.Append("Usage: ");
-				GuideBuilder.Append(key);
+				case InvocationType.Method:
+					for (int i = 0; i < methods.Count; i++)
+					{
+						MethodInfo method = methods[i];
+						GuideBuilder.AppendFormat("  * Usage: {0}", key);
+						AppendSubject();
 
-				ParameterInfo[] parameters = method.GetParameters();
-				foreach (ParameterInfo parameter in parameters)
-				{
-					GuideBuilder.Append($" [{parameter.ParameterType}]");
-				}
+						ParameterInfo[] parameters = method.GetParameters();
+						foreach (ParameterInfo parameter in parameters)
+						{
+							GuideBuilder.Append($" [{parameter.ParameterType}]");
+						}
 
-				if (i < methods.Count - 1)
-				{
-					GuideBuilder.Append('\n');
-				}
+						if (i < methods.Count - 1)
+						{
+							GuideBuilder.Append('\n');
+						}
+					}
+
+					break;
+				case InvocationType.Property:
+					if (propertyInfo.CanRead)
+					{
+						GuideBuilder.AppendFormat("  * Get Usage: {0}", key);
+						AppendSubject();
+
+						if (propertyInfo.CanWrite)
+						{
+							GuideBuilder.Append('\n');
+						}
+					}
+
+					if (propertyInfo.CanWrite)
+					{
+						GuideBuilder.AppendFormat("  * Set Usage: {0}", key);
+						AppendSubject();
+						GuideBuilder.Append($" [{propertyInfo.PropertyType}]");
+					}
+
+					break;
+				case InvocationType.Field:
+					GuideBuilder.AppendFormat("  * Get Usage: {0}", key);
+					AppendSubject();
+
+					if (!fieldInfo.IsInitOnly)
+					{
+						GuideBuilder.Append('\n');
+						GuideBuilder.AppendFormat("  * Set Usage: {0}", key);
+						AppendSubject();
+						GuideBuilder.Append($" [{fieldInfo.FieldType}]");
+					}
+
+					break;
+				default:
+					GuideBuilder.Append($"ERROR: Unable to generate guide for invoke type {InvokeType}.");
+					break;
 			}
 
 			Guide = GuideBuilder.ToString();
-		}
 
-		private static bool GetIsArgumentArrayMethod(ParameterInfo[] parameters)
-		{
-			return parameters.Length == 1 && parameters[0].ParameterType == typeof(Word[]);
+			void AppendSubject()
+			{
+				if (!IsStatic)
+				{
+					GuideBuilder.Append(" [Object Name]");
+				}
+			}
 		}
 
 		public enum InvocationType

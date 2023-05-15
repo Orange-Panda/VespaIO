@@ -2,7 +2,6 @@
     "name": "LMirman.VespaIO",
     "rootNamespace": "",
     "references": [
-        "GUID:6055be8ebefd69e48b49212b09b47b2f",
         "GUID:709ceec0df8247ad95c67a75cd7113a1"
     ],
     "includePlatforms": [],

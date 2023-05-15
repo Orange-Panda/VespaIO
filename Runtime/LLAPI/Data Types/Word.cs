@@ -4,7 +4,6 @@ namespace LMirman.VespaIO
 {
 	/// <summary>
 	/// A word is a specific input index for an <see cref="Invocation"/>.
-	/// Another way to think of this type is that it is the raw string representation of a <see cref="Argument"/>.
 	/// </summary>
 	public class Word
 	{

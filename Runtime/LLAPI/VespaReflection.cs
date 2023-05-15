@@ -10,8 +10,7 @@ namespace LMirman.VespaIO
 		public const BindingFlags StaticMethodBindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
 		public const BindingFlags CommandBindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.DeclaredOnly;
 
-		public static List<CommandDefinition> GetCommandDefinitionsFromClasses<T>(List<Type> classes, BindingFlags searchFlags)
-			where T : Attribute, ICommandProperties
+		public static List<CommandDefinition> GetCommandDefinitionsFromClasses<T>(List<Type> classes, BindingFlags searchFlags) where T : Attribute, ICommandProperties
 		{
 			List<CommandDefinition> commands = new List<CommandDefinition>();
 			foreach (Type type in classes)

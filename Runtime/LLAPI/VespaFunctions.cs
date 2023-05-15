@@ -231,6 +231,42 @@ namespace LMirman.VespaIO
 			return null;
 		}
 
+
+		private static readonly StringBuilder NiceNameBuilder = new StringBuilder();
+		public static string NicifyName(this string name)
+		{
+			NiceNameBuilder.Clear();
+			int nameStart = 0;
+			if (name.StartsWith("m_"))
+			{
+				nameStart = 2;
+			}
+			else if (name.Length >= 2 && name[0] == 'k' && char.IsUpper(name[1]))
+			{
+				nameStart = 1;
+			}
+
+			for (int i = nameStart; i < name.Length; i++)
+			{
+				char charValue = name[i];
+				bool isNextCharLower = i + 1 < name.Length && char.IsLower(name[i + 1]);
+				bool isNewWord = NiceNameBuilder.Length == 0 || (char.IsUpper(charValue) && isNextCharLower);
+				if (charValue == '_')
+				{
+					NiceNameBuilder.Append(' ');
+					continue;
+				}
+				else if (NiceNameBuilder.Length > 0 && char.IsUpper(charValue) && isNewWord)
+				{
+					NiceNameBuilder.Append(' ');
+				}
+
+				NiceNameBuilder.Append(isNewWord ? char.ToUpper(charValue) : charValue);
+			}
+
+			return NiceNameBuilder.ToString();
+		}
+
 		public enum AliasOutcome
 		{
 			/// <summary>

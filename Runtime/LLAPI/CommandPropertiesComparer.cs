@@ -2,6 +2,9 @@ using System.Collections.Generic;
 
 namespace LMirman.VespaIO
 {
+	/// <summary>
+	/// Sort commands first by manual priority then by ordinal string (using the key value not name).
+	/// </summary>
 	public class CommandPropertiesComparer : IComparer<ICommandProperties>
 	{
 		public int Compare(ICommandProperties x, ICommandProperties y)

@@ -8,7 +8,7 @@ namespace LMirman.VespaIO
 		/// Whether the console is currently enabled and open.
 		/// </summary>
 		public static bool ConsoleActive { get; set; }
-		
+
 		public static readonly NativeConsole console = new NativeConsole();
 
 		static DevConsole()
@@ -16,7 +16,7 @@ namespace LMirman.VespaIO
 			console.CommandSet = Commands.commandSet;
 			console.AliasSet = Aliases.aliasSet;
 		}
-		
+
 		[RuntimeInitializeOnLoadMethod]
 		private static void CreateConsole()
 		{
@@ -42,6 +42,7 @@ namespace LMirman.VespaIO
 			}
 		}
 
+		///<inheritdoc cref="Console.Log"/>
 		public static void Log(string text, Console.LogStyling logStyling = Console.LogStyling.Plain)
 		{
 			console.Log(text, logStyling);
@@ -58,11 +59,6 @@ namespace LMirman.VespaIO
 			{
 				console.Log($"Version: {Application.version} {(Application.genuine ? "" : "[MODIFIED]")}\nUnity Version: {Application.unityVersion}\nPlatform: {Application.platform}");
 			}
-		}
-
-		public enum PreloadType
-		{
-			None, ConsoleOpen, ConsoleStart, RuntimeStart
 		}
 	}
 }

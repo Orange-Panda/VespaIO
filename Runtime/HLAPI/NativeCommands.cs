@@ -77,7 +77,7 @@ namespace LMirman.VespaIO
 			{
 				if (sceneName.StartsWith(relevantWord, StringComparison.CurrentCultureIgnoreCase) && !autofillBuilder.Exclusions.Contains(sceneName))
 				{
-					return autofillBuilder.CreateCompletionAutofill(sceneName);
+					return autofillBuilder.CreateAutofill(sceneName);
 				}
 			}
 
@@ -155,7 +155,7 @@ namespace LMirman.VespaIO
 				string commandKey = command.Key;
 				if (commandKey.StartsWith(relevantWord) && !autofillBuilder.Exclusions.Contains(commandKey))
 				{
-					return autofillBuilder.CreateCompletionAutofill(commandKey);
+					return autofillBuilder.CreateAutofill(commandKey);
 				}
 			}
 
@@ -217,7 +217,7 @@ namespace LMirman.VespaIO
 
 		private static void PrintLookup(Command command)
 		{
-			DevConsole.Log($"= {command.Name} \"{command.Key}\"{(!string.IsNullOrWhiteSpace(command.Description) ? $"\n  - {command.Description}" : string.Empty)}");
+			DevConsole.Log($"- [{command.Key}] \"{command.Name}\"\n    - {command.Description}");
 		}
 		#endregion
 
@@ -256,6 +256,7 @@ namespace LMirman.VespaIO
 				: $"<color=yellow>Warning:</color> Tried to remove alias \"{alias}\" but no such alias was found.");
 		}
 
+		[CommandAutofill("alias_view")]
 		[CommandAutofill("alias_delete")]
 		private static AutofillValue GetAliasAutofillValue(AutofillBuilder autofillBuilder)
 		{
@@ -269,7 +270,7 @@ namespace LMirman.VespaIO
 			{
 				if (aliasKey.StartsWith(relevantWord) && !autofillBuilder.Exclusions.Contains(aliasKey))
 				{
-					return autofillBuilder.CreateCompletionAutofill(aliasKey);
+					return autofillBuilder.CreateAutofill(aliasKey);
 				}
 			}
 
