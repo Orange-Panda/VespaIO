@@ -363,7 +363,7 @@ namespace LMirman.VespaIO
 				autofillBuilder.Exclusions = autofillExclusions;
 				if (!foundCommand.IsStatic && sanitizedWords.Count >= 2)
 				{
-					autofillBuilder.InstanceTarget = VespaFunctions.GetInstanceTarget(sanitizedWords[1].text, foundCommand.DeclaringType);
+					autofillBuilder.InstanceTarget = VespaInstanceFinder.GetInstanceTargetMatch(sanitizedWords[1].text, foundCommand.DeclaringType, false);
 				}
 				else
 				{
@@ -395,15 +395,11 @@ namespace LMirman.VespaIO
 		{
 			string searchPhrase = autofillBuilder.GetRelevantWordText();
 			Type declaringType = command.DeclaringType;
-			if (declaringType.IsSubclassOf(typeof(UnityEngine.Object)))
+			foreach (UnityEngine.Object foundObject in VespaInstanceFinder.FindObjectsOfType(declaringType, false))
 			{
-				UnityEngine.Object[] foundObjects = UnityEngine.Object.FindObjectsOfType(declaringType);
-				foreach (UnityEngine.Object foundObject in foundObjects)
+				if (foundObject && foundObject.name.StartsWith(searchPhrase, StringComparison.CurrentCultureIgnoreCase) && !autofillBuilder.Exclusions.Contains(foundObject.name))
 				{
-					if (foundObject.name.StartsWith(searchPhrase, StringComparison.CurrentCultureIgnoreCase) && !autofillBuilder.Exclusions.Contains(foundObject.name))
-					{
-						return autofillBuilder.CreateAutofill(foundObject.name);
-					}
+					return autofillBuilder.CreateAutofill(foundObject.name);
 				}
 			}
 

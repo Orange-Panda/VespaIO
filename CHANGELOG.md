@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 	- The rest of the codebase lies within the `HLAPI` which provides the same intuitive console implemntation from 1.X versions
 		- Because of this separation of `LLAPI` from `HLAPI` it is possible to import exclusively the `LLAPI` if you want to write your own console implementation.
 - `ManualPriority` for `Commands` are now of type `int` instead of `bool` enabling finer tuning of the sorting of the help manual.
-	- Native commands will only use the inclusive range of `-100-100` so if you want to guarantee your command shows before or after native commands consider this range.
+	- Native commands will only use the inclusive range of `0-127` so if you want to guarantee your command shows before or after native commands consider this range.
 - By default: Assemblies that are incredibly unlikely to contain commands are no longer included in the command search
 	- This specifically ignores assemblies that **begin** with `unity`, `system`, `mscorlib`, `mono`, `log4net`, `newtonsoft`, `nunit`, `jetbrains` (Case insensitive).
 	- In testing this reduces command search time by an order of magnitude
@@ -34,6 +34,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 		- You can escape the semicolon character using `\;` to ignore this behavior
 		- Semicolons within quotes will not begin a new command.
 - `StaticCommand` is now `VespaCommand` since it now supports non-static methods and more. (see more below)
+- As stated above the original `DevConsoleRunner` implementation (including its assets) has been moved into the project samples.
+	- If you did not already have your own console implementation imported into your Asset folder you are required to import this sample to use the console again.
+	- Some `ConsoleSettingsConfig` values that were only relevant to the `DevConsoleRunner` have been moved onto the `DevConsoleRunner` itself.
 
 ### Added
 
@@ -43,14 +46,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Added the JetBrain's `[MeansImplicitUse]` attribute to attributes to automatically supress `Method never used` intellisense warnings for commands.
 - Added support for `Word[]` commands which can dynamically handle any amount of parameters.
 	- If this parameter is ever present it will *always* be invoked.
-- Added support for autofilling parameters on commands
+- Added support for autofilling subjects and parameters in console input
 - Added support for command definitions on Fields and Properties. 
 	- Does not require writing any methods to function!
 	- Supports autofill for the get value and can set value if not readonly.
-- Added support for instanced commands on any class that inherits from `UnityEngine.Object`
+- Added support for instanced (non-static) commands on any class that inherits from `UnityEngine.Object`
 	- The first parameter will be used to specify the name of the object to be targeted.
 	- Only one Object can be the target of a method. The first object found will be used.
 	- This works for methods, fields, and properties.
+- Added `LogStyling` parameter to the `Console.Log` method which will apply common styling such as warning or error formatting.
 
 ### Removed
 

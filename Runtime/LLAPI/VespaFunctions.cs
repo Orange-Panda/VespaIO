@@ -212,26 +212,6 @@ namespace LMirman.VespaIO
 			}
 		}
 
-		public static Object GetInstanceTarget(string nameQuery, Type declaringType)
-		{
-			if (!declaringType.IsSubclassOf(typeof(Object)))
-			{
-				return null;
-			}
-
-			Object[] foundObjects = Object.FindObjectsOfType(declaringType);
-			foreach (Object foundObject in foundObjects)
-			{
-				if (string.Equals(foundObject.name, nameQuery, StringComparison.CurrentCultureIgnoreCase))
-				{
-					return foundObject;
-				}
-			}
-
-			return null;
-		}
-
-
 		private static readonly StringBuilder NiceNameBuilder = new StringBuilder();
 		public static string NicifyName(this string name)
 		{

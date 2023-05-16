@@ -97,7 +97,7 @@ namespace LMirman.VespaIO
 					Type declaringType = command.DeclaringType;
 					string target = ArgumentsConstructor[0].text;
 					ArgumentsConstructor.RemoveAt(0);
-					targetObject = VespaFunctions.GetInstanceTarget(target, declaringType);
+					targetObject = VespaInstanceFinder.GetInstanceTargetMatch(target, declaringType, true);
 
 					if (!declaringType.IsSubclassOf(typeof(Object)))
 					{
