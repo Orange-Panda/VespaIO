@@ -21,7 +21,11 @@ public class DevConsoleRunner : MonoBehaviour
 	[SerializeField]
 	private TMP_InputField inputText;
 	[SerializeField]
-	private TMP_Text autofillPreview;
+	private TMP_Text autofillText;
+	[SerializeField]
+	private RectTransform autofillContainer;
+	[SerializeField]
+	private RectTransform autofillParent;
 
 	[Header("Properties")]
 	[Tooltip("When true will require a key to be held to open/close the console.")]
@@ -133,7 +137,7 @@ public class DevConsoleRunner : MonoBehaviour
 		UpdateAutofillPreview();
 
 		// Auto fill
-		if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab) && DevConsole.console.ApplyNextAutofill(out string newInputText))
+		if (DevConsole.ConsoleActive && Input.GetKeyDown(KeyCode.Tab) && DevConsole.console.TryGetNextAutofillApplied(out string newInputText))
 		{
 			inputText.SetTextWithoutNotify(newInputText);
 			inputText.caretPosition = inputText.text.Length;
@@ -232,15 +236,21 @@ public class DevConsoleRunner : MonoBehaviour
 			}
 
 			autofillPreviewValue = DevConsole.console.NextAutofill;
-			if (autofillPreviewValue != null)
+			if (autofillPreviewValue != null && DevConsole.console.VirtualText.Length > 0)
 			{
-				autofillPreview.text = autofillPreviewValue.markupNewWord;
-				autofillPreview.enabled = true;
+				TMP_CharacterInfo startIndexInfo = inputText.textComponent.textInfo.characterInfo[autofillPreviewValue.globalStartIndex];
+				autofillText.text = autofillPreviewValue.markupNewWord;
+				autofillContainer.gameObject.SetActive(true);
+				autofillContainer.sizeDelta = autofillText.GetPreferredValues(1024, autofillContainer.sizeDelta.y);
+				float parentHalfWidth = autofillParent.rect.width / 2;
+				float max = parentHalfWidth - autofillContainer.sizeDelta.x;
+				float autofillHorizontal = Mathf.Clamp(startIndexInfo.topLeft.x, -parentHalfWidth, max);
+				autofillContainer.anchoredPosition = new Vector2(autofillHorizontal, 32);
 			}
 			else
 			{
-				autofillPreview.enabled = false;
-				autofillPreview.text = string.Empty;
+				autofillContainer.gameObject.SetActive(false);
+				autofillText.text = string.Empty;
 			}
 		}
 	}
