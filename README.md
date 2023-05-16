@@ -1,6 +1,10 @@
 # VespaIO - A Unity Developer Console
 A runtime developer console that allows the user to execute commands enabling quick debugging.
 
+## ⚠️ Readme Revision In Progress
+ALERT: This readme file is associated with a pre-release version of VespaIO 2.0 but this readme file is written for VespaIO 1.x. 
+A new readme file is being constructed but in the meantime the previous (out of date) readme file is below.
+
 ## Download and Installation
 Options for installation:
 - Option A: Package Manager with Git (Recommended)
