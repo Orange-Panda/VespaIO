@@ -25,7 +25,7 @@ namespace LMirman.VespaIO
 #if UNITY_EDITOR
 			console.Enabled = NativeSettings.Config.defaultConsoleEnableEditor;
 #else
-			console.Enabled = ConsoleSettings.Config.defaultConsoleEnableStandalone;
+			console.Enabled = NativeSettings.Config.defaultConsoleEnableStandalone;
 #endif
 
 			if (NativeSettings.Config.instantiateConsoleOnLoad)
