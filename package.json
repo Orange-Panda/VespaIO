@@ -1,6 +1,6 @@
 {
   "name": "com.lmirman.vespaio",
-  "version": "2.0.0-beta.2",
+  "version": "2.0.0",
   "displayName": "VespaIO",
   "description": "A runtime developer console that allows the user to execute commands enabling quick debugging.",
   "hideInEditor": true,

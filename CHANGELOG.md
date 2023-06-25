@@ -4,7 +4,27 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2023-06-24
+
+### Added
+
+- Added public methods to the `Aliases` class to add support for adding, removing, and viewing alias definitions within your own code.
+- Added public methods to the `Commands` class to add support for adding, removing, and viewing command definitions within your own code.
+- Added various low level types to more clearly communicate command syntax and invocations.
+- Added the JetBrain's `[MeansImplicitUse]` attribute to attributes to automatically supress `Method never used` intellisense warnings for commands.
+- Added support for `Word[]` commands which can dynamically handle any amount of parameters.
+	- If this parameter is ever present it will *always* be invoked.
+- Added support for autofilling subjects and parameters in console input
+- Added support for command definitions on Fields and Properties.
+	- Does not require writing any methods to function!
+	- Supports autofill for the get value and can set value if not readonly.
+- Added support for instanced (non-static) commands on any class that inherits from `UnityEngine.Object`
+	- The first parameter will be used to specify the name of the object to be targeted.
+	- Only one Object can be the target of a method. The first object found will be used.
+	- This works for methods, fields, and properties.
+- Added `LogStyling` parameter to the `Console.Log` method which will apply common styling such as warning or error formatting.
+- Added `VESPA_DISABLE` define symbol which when present will remove core functionality of the console. Not present by default
+- Added `VESPA_DISABLE_NATIVE_COMMANDS` define symbol which when present will remove the native commands that come with the console. Not present by default.
 
 ### Breaking Changes
 
@@ -26,43 +46,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 	- As a reminder: Keys should only use chracters from a-z, 0-9, and the `_` character.
 	- Any keys that violate these rules will be converted to a valid key by going to lower case, replacing spaces with the `_`, and removing other invalid characters.
 - The text parser for console input has been completely rewritten. It follows very similiar syntax to before but may have slightly different behavior from before including:
-	- By default a command is defined by space separated words. Each word will be translated into a method parameter later.
+	- By default a command is invoked by space separated words. Each word will be translated into a method parameter later.
 	- If you would like to include a space in a parameter begin a quote using the "" character. 
 		- Only the first set of quotations will be removed
 		- You can escape the quote character using `\"` to ignore this behavior
 	- You can begin a new command definition by using the semicolon character
 		- You can escape the semicolon character using `\;` to ignore this behavior
 		- Semicolons within quotes will not begin a new command.
-- `StaticCommand` is now `VespaCommand` since it now supports non-static methods and more. (see more below)
+- `StaticCommand` is now `VespaCommand` since it now supports non-static methods and more.
 - As stated above the original `DevConsoleRunner` implementation (including its assets) has been moved into the project samples.
 	- If you did not already have your own console implementation imported into your Asset folder you are required to import this sample to use the console again.
 	- Some `ConsoleSettingsConfig` values that were only relevant to the `DevConsoleRunner` have been moved onto the `DevConsoleRunner` itself.
-
-### Added
-
-- Added public methods to the `Aliases` class to add support for adding, removing, and viewing alias definitions within your own code.
-- Added public methods to the `Commands` class to add support for adding, removing, and viewing command definitions within your own code.
-- Added various low level types to more clearly communicate command syntax and invocations.
-- Added the JetBrain's `[MeansImplicitUse]` attribute to attributes to automatically supress `Method never used` intellisense warnings for commands.
-- Added support for `Word[]` commands which can dynamically handle any amount of parameters.
-	- If this parameter is ever present it will *always* be invoked.
-- Added support for autofilling subjects and parameters in console input
-- Added support for command definitions on Fields and Properties. 
-	- Does not require writing any methods to function!
-	- Supports autofill for the get value and can set value if not readonly.
-- Added support for instanced (non-static) commands on any class that inherits from `UnityEngine.Object`
-	- The first parameter will be used to specify the name of the object to be targeted.
-	- Only one Object can be the target of a method. The first object found will be used.
-	- This works for methods, fields, and properties.
-- Added `LogStyling` parameter to the `Console.Log` method which will apply common styling such as warning or error formatting.
-- Added `VESPA_DISABLE` define symbol which when present will remove core functionality of the console. Not present by default
-- Added `VESPA_DISABLE_NATIVE_COMMANDS` define symbol which when present will remove the native commands that come with the console. Not present by default.
 
 ### Removed
 
 - The `LongString` type has been completely removed in favor of using quotation blocks around command input.
 	- This means that previous LongString methods now take a string input and you are required to put quotations around your phrase.
-	- Alternatively you can use `Word[]` to handle a dynamic amount of commands.
+	- Alternatively you can use `Word[]` to handle a dynamic amount of words.
 - The default `DevConsoleRunner` and its assets have been moved to `Samples`
 	- This requires an import in order to use the console out of the box.
 
