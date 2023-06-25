@@ -3,6 +3,7 @@ using LMirman.VespaIO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -66,6 +67,7 @@ public class DevConsoleRunner : MonoBehaviour
 
 	private void OnEnable()
 	{
+		SceneManager.activeSceneChanged += SceneManagerOnActiveSceneChanged;
 		DevConsole.console.OutputUpdate += ConsoleOnOutputUpdate;
 		inputText.onValueChanged.AddListener(InputText_OnValueChanged);
 		recentInputIndex = -1;
@@ -73,8 +75,17 @@ public class DevConsoleRunner : MonoBehaviour
 
 	private void OnDisable()
 	{
+		SceneManager.activeSceneChanged -= SceneManagerOnActiveSceneChanged;
 		DevConsole.console.OutputUpdate -= ConsoleOnOutputUpdate;
 		inputText.onValueChanged.RemoveListener(InputText_OnValueChanged);
+	}
+
+	private void SceneManagerOnActiveSceneChanged(Scene prevScene, Scene currScene)
+	{
+		if (DevConsole.ConsoleActive && EventSystem.current != null)
+		{
+			EventSystem.current.SetSelectedGameObject(inputText.gameObject);
+		}
 	}
 
 	private void ApplicationOnLogMessageReceived(string condition, string stacktrace, LogType type)
