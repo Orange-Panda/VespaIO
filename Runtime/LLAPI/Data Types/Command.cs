@@ -512,7 +512,7 @@ namespace LMirman.VespaIO
 						ParameterInfo[] parameters = method.GetParameters();
 						foreach (ParameterInfo parameter in parameters)
 						{
-							GuideBuilder.Append($" [{parameter.ParameterType}]");
+							GuideBuilder.Append($" [{parameter.ParameterType} - \"{parameter.Name.NicifyName()}\"]");
 						}
 
 						if (i < methods.Count - 1)
