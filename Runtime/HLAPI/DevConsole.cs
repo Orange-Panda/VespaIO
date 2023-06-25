@@ -7,8 +7,12 @@ namespace LMirman.VespaIO
 		/// <summary>
 		/// Whether the console is currently enabled and open.
 		/// </summary>
+#if !VESPA_DISABLE
 		public static bool ConsoleActive { get; set; }
-
+#else
+		// ReSharper disable once ValueParameterNotUsed
+		public static bool ConsoleActive { get => false; set { } }
+#endif
 		public static readonly NativeConsole console = new NativeConsole();
 
 		static DevConsole()
@@ -17,6 +21,7 @@ namespace LMirman.VespaIO
 			console.AliasSet = Aliases.aliasSet;
 		}
 
+#if !VESPA_DISABLE
 		[RuntimeInitializeOnLoadMethod]
 		private static void CreateConsole()
 		{
@@ -41,6 +46,7 @@ namespace LMirman.VespaIO
 				}
 			}
 		}
+#endif
 
 		///<inheritdoc cref="Console.Log"/>
 		public static void Log(string text, Console.LogStyling logStyling = Console.LogStyling.Plain)

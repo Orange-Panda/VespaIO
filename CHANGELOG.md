@@ -55,6 +55,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 	- Only one Object can be the target of a method. The first object found will be used.
 	- This works for methods, fields, and properties.
 - Added `LogStyling` parameter to the `Console.Log` method which will apply common styling such as warning or error formatting.
+- Added `VESPA_DISABLE` define symbol which when present will remove core functionality of the console. Not present by default
+- Added `VESPA_DISABLE_NATIVE_COMMANDS` define symbol which when present will remove the native commands that come with the console. Not present by default.
 
 ### Removed
 

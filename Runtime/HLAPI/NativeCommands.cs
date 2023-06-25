@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,6 +11,7 @@ namespace LMirman.VespaIO
 	/// </summary>
 	public static class NativeCommands
 	{
+#if !VESPA_DISABLE && !VEPSA_DISABLE_NATIVE_COMMANDS
 		private const int HelpPageLength = 10;
 
 		[VespaCommand("quit", Name = "Quit Application", Description = "Closes the application", ManualPriority = 70)]
@@ -67,7 +67,7 @@ namespace LMirman.VespaIO
 					SceneNameList.Add(Path.GetFileNameWithoutExtension(SceneUtility.GetScenePathByBuildIndex(i)));
 				}
 			}
-			
+
 			if (autofillBuilder.RelevantParameterIndex != 0)
 			{
 				return null;
@@ -331,5 +331,7 @@ namespace LMirman.VespaIO
 			DevConsole.Log("--- Use \"alias_list {page #}\" for more ---");
 		}
 		#endregion
+
+#endif
 	}
 }

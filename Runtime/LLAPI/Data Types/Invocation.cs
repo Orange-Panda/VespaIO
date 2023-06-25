@@ -161,6 +161,7 @@ namespace LMirman.VespaIO
 
 		public InvokeResult RunInvocation(Console console, out Exception exception)
 		{
+#if !VESPA_DISABLE
 			try
 			{
 				exception = null;
@@ -183,12 +184,12 @@ namespace LMirman.VespaIO
 				}
 				else if (invocationType == Command.InvocationType.Property)
 				{
-					InvokeProperty(console);
+					InvokeProperty();
 					return InvokeResult.Success;
 				}
 				else if (invocationType == Command.InvocationType.Field)
 				{
-					InvokeField(console);
+					InvokeField();
 					return InvokeResult.Success;
 				}
 				else
@@ -201,72 +202,77 @@ namespace LMirman.VespaIO
 				exception = e.InnerException ?? e;
 				return InvokeResult.ErrorException;
 			}
-		}
 
-		private void InvokeProperty(Console console)
-		{
-			object prevValue = propertyInfo.CanRead ? propertyInfo.GetValue(targetObject) : string.Empty;
-			if (!propertyInfo.CanWrite)
+			void InvokeProperty()
 			{
-				console.Log($"{GetLogValue("Property", propertyInfo.Name)} has readonly value \"{prevValue}\"");
-				return;
-			}
-			else if (arguments.Length == 0 && !propertyInfo.CanRead)
-			{
-				console.Log($"Property \"{propertyInfo.Name}\" can only have its value set.", Console.LogStyling.Error);
-				return;
-			}
-			else if (arguments.Length == 0)
-			{
-				console.Log($"{GetLogValue("Property", propertyInfo.Name)} has value \"{prevValue}\"");
-				return;
-			}
+				object prevValue = propertyInfo.CanRead ? propertyInfo.GetValue(targetObject) : string.Empty;
+				if (!propertyInfo.CanWrite)
+				{
+					console.Log($"{GetLogValue("Property", propertyInfo.Name)} has readonly value \"{prevValue}\"");
+					return;
+				}
+				else if (arguments.Length == 0 && !propertyInfo.CanRead)
+				{
+					console.Log($"Property \"{propertyInfo.Name}\" can only have its value set.", Console.LogStyling.Error);
+					return;
+				}
+				else if (arguments.Length == 0)
+				{
+					console.Log($"{GetLogValue("Property", propertyInfo.Name)} has value \"{prevValue}\"");
+					return;
+				}
 
-			string inputValue = arguments[0].text;
-			TypeConverter typeConverter = TypeDescriptor.GetConverter(propertyInfo.PropertyType);
-			if (typeConverter.IsValid(inputValue))
-			{
-				object newValue = typeConverter.ConvertFrom(inputValue);
-				propertyInfo.SetValue(targetObject, newValue);
-				console.Log(propertyInfo.CanRead
-					? $"Set {GetLogValue("property", propertyInfo.Name)} from \"{prevValue}\" to \"{newValue}\""
-					: $"Set {GetLogValue("property", propertyInfo.Name)} to \"{newValue}\"");
-			}
-			else
-			{
-				console.Log($"Cannot set value of property \"{propertyInfo.Name}\" ({propertyInfo.PropertyType}) to \"{inputValue}\"", Console.LogStyling.Error);
-			}
-		}
-
-		private void InvokeField(Console console)
-		{
-			object prevValue = fieldInfo.GetValue(targetObject);
-			if (fieldInfo.IsInitOnly)
-			{
-				console.Log($"{GetLogValue("Field", fieldInfo.Name)} has readonly value \"{prevValue}\"");
-				return;
-			}
-			else if (arguments.Length == 0)
-			{
-				console.Log($"{GetLogValue("Field", fieldInfo.Name)} has value \"{prevValue}\"");
-				return;
+				string inputValue = arguments[0].text;
+				TypeConverter typeConverter = TypeDescriptor.GetConverter(propertyInfo.PropertyType);
+				if (typeConverter.IsValid(inputValue))
+				{
+					object newValue = typeConverter.ConvertFrom(inputValue);
+					propertyInfo.SetValue(targetObject, newValue);
+					console.Log(propertyInfo.CanRead
+						? $"Set {GetLogValue("property", propertyInfo.Name)} from \"{prevValue}\" to \"{newValue}\""
+						: $"Set {GetLogValue("property", propertyInfo.Name)} to \"{newValue}\"");
+				}
+				else
+				{
+					console.Log($"Cannot set value of property \"{propertyInfo.Name}\" ({propertyInfo.PropertyType}) to \"{inputValue}\"", Console.LogStyling.Error);
+				}
 			}
 
-			string inputValue = arguments[0].text;
-			TypeConverter typeConverter = TypeDescriptor.GetConverter(fieldInfo.FieldType);
-			if (typeConverter.IsValid(inputValue))
+			void InvokeField()
 			{
-				object newValue = typeConverter.ConvertFrom(inputValue);
-				fieldInfo.SetValue(targetObject, newValue);
-				console.Log($"Set {GetLogValue("field", fieldInfo.Name)} from \"{prevValue}\" to \"{newValue}\"");
+				object prevValue = fieldInfo.GetValue(targetObject);
+				if (fieldInfo.IsInitOnly)
+				{
+					console.Log($"{GetLogValue("Field", fieldInfo.Name)} has readonly value \"{prevValue}\"");
+					return;
+				}
+				else if (arguments.Length == 0)
+				{
+					console.Log($"{GetLogValue("Field", fieldInfo.Name)} has value \"{prevValue}\"");
+					return;
+				}
+
+				string inputValue = arguments[0].text;
+				TypeConverter typeConverter = TypeDescriptor.GetConverter(fieldInfo.FieldType);
+				if (typeConverter.IsValid(inputValue))
+				{
+					object newValue = typeConverter.ConvertFrom(inputValue);
+					fieldInfo.SetValue(targetObject, newValue);
+					console.Log($"Set {GetLogValue("field", fieldInfo.Name)} from \"{prevValue}\" to \"{newValue}\"");
+				}
+				else
+				{
+					console.Log($"Cannot set value of field \"{fieldInfo.Name}\" ({fieldInfo.FieldType}) to \"{inputValue}\"", Console.LogStyling.Error);
+				}
 			}
-			else
-			{
-				console.Log($"Cannot set value of field \"{fieldInfo.Name}\" ({fieldInfo.FieldType}) to \"{inputValue}\"", Console.LogStyling.Error);
-			}
+#else
+			exception = null;
+			return InvokeResult.ErrorConsoleInactive;
+#endif
 		}
 
 		private static readonly StringBuilder LogValueBuilder = new StringBuilder();
+
 		private string GetLogValue(string invokeType, string variableName)
 		{
 			LogValueBuilder.Clear();
