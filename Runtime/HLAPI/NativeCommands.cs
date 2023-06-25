@@ -143,7 +143,7 @@ namespace LMirman.VespaIO
 			}
 
 			string relevantWord = autofillBuilder.GetRelevantWordText().CleanseKey();
-			IEnumerable<string> commandKeys = Commands.commandSet.GetPublicCommands().Select(command => command.Name);
+			IEnumerable<string> commandKeys = Commands.commandSet.GetPublicCommands().Select(command => command.Key);
 			return autofillBuilder.CreateAutofillFromFirstMatch(commandKeys, relevantWord);
 		}
 
