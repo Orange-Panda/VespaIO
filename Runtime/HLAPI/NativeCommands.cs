@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -73,15 +74,7 @@ namespace LMirman.VespaIO
 			}
 
 			string relevantWord = autofillBuilder.GetRelevantWordText();
-			foreach (string sceneName in SceneNameList)
-			{
-				if (sceneName.StartsWith(relevantWord, StringComparison.CurrentCultureIgnoreCase) && !autofillBuilder.Exclusions.Contains(sceneName))
-				{
-					return autofillBuilder.CreateAutofill(sceneName);
-				}
-			}
-
-			return null;
+			return autofillBuilder.CreateAutofillFromFirstMatch(SceneNameList, relevantWord);
 		}
 		#endregion
 
@@ -150,16 +143,8 @@ namespace LMirman.VespaIO
 			}
 
 			string relevantWord = autofillBuilder.GetRelevantWordText().CleanseKey();
-			foreach (Command command in Commands.commandSet.GetPublicCommands())
-			{
-				string commandKey = command.Key;
-				if (commandKey.StartsWith(relevantWord) && !autofillBuilder.Exclusions.Contains(commandKey))
-				{
-					return autofillBuilder.CreateAutofill(commandKey);
-				}
-			}
-
-			return null;
+			IEnumerable<string> commandKeys = Commands.commandSet.GetPublicCommands().Select(command => command.Name);
+			return autofillBuilder.CreateAutofillFromFirstMatch(commandKeys, relevantWord);
 		}
 
 		private static int CountPages()
@@ -266,15 +251,7 @@ namespace LMirman.VespaIO
 			}
 
 			string relevantWord = autofillBuilder.GetRelevantWordText().CleanseKey();
-			foreach (string aliasKey in Aliases.aliasSet.Keys)
-			{
-				if (aliasKey.StartsWith(relevantWord) && !autofillBuilder.Exclusions.Contains(aliasKey))
-				{
-					return autofillBuilder.CreateAutofill(aliasKey);
-				}
-			}
-
-			return null;
+			return autofillBuilder.CreateAutofillFromFirstMatch(Aliases.aliasSet.Keys, relevantWord);
 		}
 
 		[VespaCommand("alias_reset_all", Name = "Reset All Aliases", Description = "Reset all alias definitions")]

@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using System;
 using System.Collections.Generic;
 
 namespace LMirman.VespaIO
@@ -95,7 +96,43 @@ namespace LMirman.VespaIO
 		/// <param name="textToPlaceForWord">The full word to place in as the original word.</param>
 		public AutofillValue CreateAutofill(string textToPlaceForWord)
 		{
-			return new AutofillValue(textToPlaceForWord, RelevantWordCharIndex);
+			return textToPlaceForWord != null ? new AutofillValue(textToPlaceForWord, RelevantWordCharIndex) : null;
+		}
+
+		/// <summary>
+		/// Find the first string in a <see cref="set"/> that starts with the text of <see cref="query"/> and has not been added to <see cref="Exclusions"/>.
+		/// Then create an <see cref="AutofillValue"/> for the string that is found.
+		/// </summary>
+		/// <param name="set">The set of words to search from.</param>
+		/// <param name="query">The text to search the start of values from the set for a match</param>
+		/// <param name="stringComparison">String comparison rules used for searching the start of words</param>
+		/// <returns>The AutofillValue found for the phrase in the <see cref="set"/> that matched. Returns null if no match was found.</returns>
+		[CanBeNull]
+		public AutofillValue CreateAutofillFromFirstMatch(IEnumerable<string> set, string query, StringComparison stringComparison = StringComparison.OrdinalIgnoreCase)
+		{
+			string textToPlaceForWord = FindFirstMatch(set, query, stringComparison);
+			return CreateAutofill(textToPlaceForWord);
+		}
+		
+		/// <summary>
+		/// Find the first string in a <see cref="set"/> that starts with the text of <see cref="query"/> and has not been added to <see cref="Exclusions"/>.
+		/// </summary>
+		/// <param name="set">The set of words to search from.</param>
+		/// <param name="query">The text to search the start of values from the set for a match</param>
+		/// <param name="stringComparison">String comparison rules used for searching the start of words</param>
+		/// <returns>The phrase found in the <see cref="set"/> that matches. Returns null if no match is found.</returns>
+		[CanBeNull]
+		public string FindFirstMatch(IEnumerable<string> set, string query, StringComparison stringComparison = StringComparison.OrdinalIgnoreCase)
+		{
+			foreach (string phrase in set)
+			{
+				if (phrase.StartsWith(query, stringComparison) && !Exclusions.Contains(phrase))
+				{
+					return phrase;
+				}
+			}
+
+			return null;
 		}
 	}
 }
